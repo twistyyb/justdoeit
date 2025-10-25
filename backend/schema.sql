@@ -15,24 +15,12 @@ create table public.locations (
 create table public.sessions (
   id uuid not null default gen_random_uuid (),
   locationid uuid not null,
-  inputtime timestamp with time zone not null,
-  duration integer not null,
-  rating numeric,
-  cleanliness numeric,
+  inputtime timestamp with time zone null,
+  duration integer null,
+  rating numeric(3, 1) not null default '-1'::numeric,
+  cleanliness smallint null default '-1'::smallint,
   comment text null,
-  outletavailability boolean not null,
+  outletavailability boolean null,
   creators uuid[] null,
-  constraint sessions_pkey primary key (id),
-  constraint sessions_cleanliness_check check (
-    (
-      (cleanliness >= 1)
-      and (cleanliness <= 10)
-    )
-  ),
-  constraint sessions_rating_check check (
-    (
-      (rating >= 0)
-      and (rating <= 5)
-    )
-  )
+  constraint sessions_pkey primary key (id)
 ) TABLESPACE pg_default;
