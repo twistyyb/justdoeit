@@ -5,12 +5,20 @@ from database import get_database, get_supabase, db_manager
 from models import LocationCreate, LocationResponse, SessionCreate, SessionResponse, SessionWithLocation
 from typing import List
 import logging
+from supabase import get_supabase
+
+
+supabase = get_supabase()
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Just Doe It API", version="1.0.0")
+
+
+
 
 # CORS middleware
 app.add_middleware(
