@@ -14,8 +14,14 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Just Doe It API", version="1.0.0")
 
-
-
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8080", "http://127.0.0.1:8080", "http://localhost:3000"],  # React dev server
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def read_root():
