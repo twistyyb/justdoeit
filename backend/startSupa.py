@@ -17,8 +17,8 @@ supabase: Client = create_client(url, key)
 
 print(supabase.table("locations").select("*").execute())
 
-# def get_supabase():
-#     return supabase
+def get_supabase():
+    return supabase
 
 
 

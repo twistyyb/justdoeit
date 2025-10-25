@@ -1,11 +1,9 @@
 from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from supabase import Client
-from database import get_database, get_supabase, db_manager
-from models import LocationCreate, LocationResponse, SessionCreate, SessionResponse, SessionWithLocation
 from typing import List
 import logging
-from supabase import get_supabase
+from startSupa import get_supabase
 
 
 supabase = get_supabase()
@@ -43,9 +41,11 @@ async def respond(request: Request):
     return {"hi": name}
 
 
-
-
-
+@app.post("/create_location")
+async def create_location(request: Request):
+    data = await request.json()
+    response = supabase.table("locations").insert(data).execute()
+    return {"message": "Location created", "data": response.data}
 
 
 if __name__ == "__main__":
