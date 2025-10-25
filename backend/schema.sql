@@ -1,22 +1,32 @@
 -- Database schema for Just Doe It application
 -- This file contains the table definitions for the application
 
-CREATE TABLE locations (
-    id UUID PRIMARY KEY,
-    coordinates POINT NOT NULL, -- geographic coordinates (latitude, longitude)
-    name VARCHAR(255) NOT NULL,
-    shortLoc VARCHAR(100) NOT NULL, -- short location identifier
-    summary TEXT
-);
+create table public.locations (
+  id uuid not null default gen_random_uuid (),
+  name character varying(255) not null,
+  shortloc character varying(100) not null,
+  summary text null,
+  coordinate_x numeric null,
+  coordinate_y numeric null,
+  constraint locations_pkey primary key (id),
+  constraint locations_id_key unique (id)
+) TABLESPACE pg_default;
 
-CREATE TABLE sessions (
-    id UUID PRIMARY KEY,
-    locationid UUID NOT NULL,
-    inputTime TIMESTAMP WITH TIME ZONE NOT NULL,
-    duration INTEGER NOT NULL, -- duration in minutes
-    rating DECIMAL(3,1) NOT NULL, -- steps of 0.5, e.g., 1.0, 1.5, 2.0, etc.
-    cleanliness INTEGER NOT NULL CHECK (cleanliness >= 1 AND cleanliness <= 10),
-    comment TEXT,
-    outletAvailability BOOLEAN NOT NULL,
-    collaborators UUID[] -- array of UUIDs for collaborators
-);
+create table public.sessions (
+  id uuid not null default gen_random_uuid (),
+  locationid uuid not null,
+  inputtime timestamp with time zone not null,
+  duration integer not null,
+  rating numeric(3, 1) not null,
+  cleanliness integer not null,
+  comment text null,
+  outletavailability boolean not null,
+  creators uuid[] null,
+  constraint sessions_pkey primary key (id),
+  constraint sessions_cleanliness_check check (
+    (
+      (cleanliness >= 1)
+      and (cleanliness <= 10)
+    )
+  )
+) TABLESPACE pg_default;
