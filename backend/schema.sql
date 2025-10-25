@@ -17,8 +17,8 @@ create table public.sessions (
   locationid uuid not null,
   inputtime timestamp with time zone not null,
   duration integer not null,
-  rating numeric(3, 1) not null,
-  cleanliness integer not null,
+  rating numeric,
+  cleanliness numeric,
   comment text null,
   outletavailability boolean not null,
   creators uuid[] null,
@@ -27,6 +27,12 @@ create table public.sessions (
     (
       (cleanliness >= 1)
       and (cleanliness <= 10)
+    )
+  ),
+  constraint sessions_rating_check check (
+    (
+      (rating >= 0)
+      and (rating <= 5)
     )
   )
 ) TABLESPACE pg_default;

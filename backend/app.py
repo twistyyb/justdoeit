@@ -47,11 +47,34 @@ async def respond(request: Request):
     return {"hi": name}
 
 
+@app.post("/create_session")
+async def create_location(request: Request):
+    data = await request.json()
+    response = supabase.table("locations").insert(data).execute()
+    return {"message": "Location created", "data": response.data}
+
+
 @app.post("/create_location")
 async def create_location(request: Request):
     data = await request.json()
     response = supabase.table("locations").insert(data).execute()
     return {"message": "Location created", "data": response.data}
+
+
+@app.get("/location_names")
+async def location_names():
+    response = supabase.table("locations").select("id", "name", "shortloc").execute()
+
+    return {
+        "locations": [
+            {
+                "id": item["id"],
+                "name": item["name"],
+                "shortloc": item["shortloc"]
+            }
+            for item in response.data
+        ]
+    }
 
 
 if __name__ == "__main__":
