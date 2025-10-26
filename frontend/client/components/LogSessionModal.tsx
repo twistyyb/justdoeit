@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X, Check } from "lucide-react";
 import { LocationSelector } from "./LocationSelector";
 import { CollaboratorSelector } from "./CollaboratorSelector";
+import { apiClient } from "@/lib/api";
 
 interface LogSessionModalProps {
   isOpen: boolean;
@@ -19,7 +20,7 @@ export function LogSessionModal({ isOpen, onClose }: LogSessionModalProps) {
   const [locationId, setLocationId] = useState<string | null>(null);
   const [inputTime, setInputTime] = useState(getCurrentDateTime());
   const [duration, setDuration] = useState<number>(60);
-  const [rating, setRating] = useState<number>(0);
+  const [rating, setRating] = useState<number>(3); // Default to 3 (backend requires 1-5)
   const [cleanliness, setCleanliness] = useState<number>(3);
   const [comment, setComment] = useState("");
   const [outletAvailability, setOutletAvailability] = useState(true);
@@ -37,33 +38,53 @@ export function LogSessionModal({ isOpen, onClose }: LogSessionModalProps) {
       return;
     }
 
+    // Validate rating (backend requires 1-5)
+    if (rating < 1 || rating > 5) {
+      alert("Please select a productivity rating (1-5)");
+      return;
+    }
+
+    // Validate cleanliness (backend requires 1-5)
+    if (cleanliness < 1 || cleanliness > 5) {
+      alert("Please select a cleanliness rating (1-5)");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      // dummy endpoint: POST /api/create_sesh
+      // Prepare payload matching backend format
+      // POST http://127.0.0.1:5002/create_session
       const payload = {
-        locationid: locationId,
-        inputTime: new Date(inputTime).toISOString(),
-        duration,
-        rating,
-        cleanliness,
-        comment,
-        outletAvailability,
-        collaborators,
+        creators: collaborators, // List[uuid] including self
+        locationid: locationId,  // uuid from dropdown
+        inputtime: new Date(inputTime).toISOString(), // ISO format with timezone
+        duration,                // int (mins)
+        rating,                  // double (1-5)
+        cleanliness,            // int (1-5)
+        comment,                // str
+        outletavailability: outletAvailability, // IMPORTANT: lowercase to match backend!
       };
 
-      // const res = await fetch('/api/create_sesh', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(payload),
-      // });
-      // const data = await res.json();
-
-      console.log("Session data:", payload);
+      console.log("Sending session data to backend:", payload);
+      
+      // Call backend API
+      const response = await apiClient.createSession(payload);
+      
+      console.log("Backend response:", response);
 
       setSubmitStatus("success");
       setTimeout(() => {
         onClose();
         setSubmitStatus("idle");
+        // Reset form
+        setLocationId(null);
+        setInputTime(getCurrentDateTime());
+        setDuration(60);
+        setRating(3); // Reset to valid default (1-5 range)
+        setCleanliness(3);
+        setComment("");
+        setOutletAvailability(true);
+        setCollaborators([]);
       }, 1500);
     } catch (error) {
       console.error("Error submitting session:", error);
@@ -134,10 +155,10 @@ export function LogSessionModal({ isOpen, onClose }: LogSessionModalProps) {
           {/* Rating */}
           <div>
             <label className="text-sm font-semibold text-gray-700 mb-3 block">
-              Productivity Rating (0-5) *
+              Productivity Rating (1-5) *
             </label>
             <div className="flex gap-2 justify-center">
-              {[0, 1, 2, 3, 4, 5].map((value) => (
+              {[1, 2, 3, 4, 5].map((value) => (
                 <button
                   key={value}
                   type="button"
@@ -157,10 +178,10 @@ export function LogSessionModal({ isOpen, onClose }: LogSessionModalProps) {
           {/* Cleanliness */}
           <div>
             <label className="text-sm font-semibold text-gray-700 mb-3 block">
-              Cleanliness (0-5) *
+              Cleanliness (1-5) *
             </label>
             <div className="flex gap-2 justify-center">
-              {[0, 1, 2, 3, 4, 5].map((value) => (
+              {[1, 2, 3, 4, 5].map((value) => (
                 <button
                   key={value}
                   type="button"

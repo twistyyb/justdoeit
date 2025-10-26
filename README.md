@@ -6,27 +6,28 @@ A modern web application to track and analyze study sessions with location recom
 
 ```
 justdoeit/
-├── backend/              # Python Flask backend (legacy/placeholder)
-│   ├── app.py
+├── backend/              # Python FastAPI backend
+│   ├── app.py           # Main API application
 │   ├── requirements.txt
 │   └── __init__.py
 ├── frontend/             # React + TypeScript frontend (Vite)
 │   ├── client/          # React application code
-│   │   ├── components/  # React components
+│   │   ├── components/  # React components (UI + business logic)
 │   │   ├── hooks/       # Custom React hooks
 │   │   ├── lib/         # Utility functions & API client
-│   │   └── pages/       # Page components
-│   ├── shared/          # Shared types between client & server
+│   │   ├── pages/       # Page components (Index, NotFound)
+│   │   └── styles/      # Global CSS styles
+│   ├── shared/          # Shared TypeScript types
 │   │   └── api.ts       # API type definitions
 │   ├── server/          # Express dev server
-│   │   ├── index.ts     # Server setup
-│   │   └── routes/      # API routes for development
-│   ├── functions/       # Serverless function handlers (optional)
-│   ├── public/          # Static assets
-│   ├── package.json
-│   ├── tsconfig.json
-│   ├── vite.config.ts
-│   └── tailwind.config.ts
+│   │   ├── index.ts     # Server setup for development
+│   │   └── node-build.ts # Production server build
+│   ├── public/          # Static assets (favicon, images)
+│   ├── index.html       # HTML entry point
+│   ├── package.json     # Dependencies & scripts
+│   ├── tsconfig.json    # TypeScript configuration
+│   ├── vite.config.ts   # Vite build configuration
+│   └── tailwind.config.ts # Tailwind CSS configuration
 └── README.md
 ```
 
@@ -124,17 +125,17 @@ To run the frontend on your local computer, you need these files:
   - `hooks/` - Custom React hooks
   - `lib/` - Utilities and API client
   - `pages/` - Page components (Index.tsx, NotFound.tsx)
+  - `styles/` - Global CSS and Tailwind styles
 - `shared/` - Shared TypeScript types
   - `api.ts` - API type definitions
 - `server/` - Express development server
-  - `index.ts` - Server entry point
-  - `routes/` - API routes
+  - `index.ts` - Dev server entry point
+  - `node-build.ts` - Production server build
 - `public/` - Static assets (favicon, images, robots.txt)
+- `index.html` - HTML entry point
 
-### Optional Files
-- `functions/api.ts` - For serverless deployment (Netlify/Vercel)
-- `api-integration.md` - API documentation
-- `.dockerignore` - Docker ignore rules (if using Docker)
+### Documentation
+- `api-integration.md` - Comprehensive API integration guide
 
 ## API Integration
 
