@@ -96,6 +96,7 @@ class LocationDetailsResponse(BaseModel):
     coordinate_y: float
     average_rating: float
     average_cleanliness: float
+    outlet_percentage: float  # Percentage of sessions that reported outlets available (0-100)
     crowdedness_vs_time: Dict[str, CrowdednessBin]
 
 

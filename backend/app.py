@@ -233,6 +233,7 @@ async def get_all_location_info():
                 "coordinate_y": location.get('coordinate_y', 0.0),
                 "average_productivity_rating": 0.0,
                 "average_cleanliness": 0.0,
+                "outlet_percentage": 0.0,
                 "crowdedness_vs_time": {},
                 "error": str(e)
             }
@@ -276,6 +277,14 @@ async def get_location_details(location_id: UUID):
         avg_cleanliness = sum(cleanliness_scores) / len(cleanliness_scores)
     else:
         avg_cleanliness = 0.0
+    
+    # Step 4.5: Calculate outlet availability percentage
+    outlet_sessions = [s for s in sessions if s.get('outletavailability') is not None]
+    outlet_percentage = 0.0
+    if outlet_sessions:
+        outlets_true = sum(1 for s in outlet_sessions if s.get('outletavailability') is True)
+        total_with_data = len(outlet_sessions)
+        outlet_percentage = (outlets_true / total_with_data) * 100 if total_with_data > 0 else 0.0
     
     # Step 5: Create crowdedness histogram
     # Initialize bins for 8 time periods (3 hours each)
@@ -339,6 +348,7 @@ async def get_location_details(location_id: UUID):
         coordinate_y=location.get('coordinate_y', 0.0),
         average_rating=round(avg_rating, 2),
         average_cleanliness=round(avg_cleanliness, 2),
+        outlet_percentage=round(outlet_percentage, 2),
         crowdedness_vs_time=crowdedness_data
     )
 

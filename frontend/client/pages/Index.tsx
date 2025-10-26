@@ -41,7 +41,7 @@ export default function Index() {
   const [studyBuddyData, setStudyBuddyData] = useState<{name: string, sessionCount: number}[]>([]);
   const [favoriteLocationName, setFavoriteLocationName] = useState<string | null>(null);
   const [mostProductiveLocationData, setMostProductiveLocationData] = useState<{image: string, name: string, shortloc: string} | null>(null);
-  const [mostVisitedLocationData, setMostVisitedLocationData] = useState<{image: string, name: string} | null>(null);
+  const [mostVisitedLocationData, setMostVisitedLocationData] = useState<{image: string, name: string, shortloc: string} | null>(null);
   const { user, userProfile } = useAuth();
   const { gradient, name, textColor } = useTimeBasedGradient();
   
@@ -154,7 +154,8 @@ export default function Index() {
                 if (location && location.image) {
                   setMostVisitedLocationData({
                     image: location.image,
-                    name: locationData.name
+                    name: locationData.name,
+                    shortloc: location.shortloc
                   });
                 }
               }
@@ -372,11 +373,9 @@ export default function Index() {
                     <div className={`text-sm ${textColor} opacity-75 flex items-center gap-1`}>
                       <span>📍</span> {mostProductiveLocationData.shortloc}
                     </div>
-                    {userAnalytics?.most_productive_location && (
-                      <div className={`text-xs ${textColor} opacity-75`}>
-                        Avg Rating: {userAnalytics.most_productive_location.average_rating.toFixed(1)}/5
-                      </div>
-                    )}
+                    <div className={`text-sm ${textColor} opacity-75`}>
+                      No yap sessions here
+                    </div>
                   </div>
                 </div>
               </div>
@@ -391,7 +390,7 @@ export default function Index() {
                   <div className={`text-xs ${textColor} opacity-90`}>
                     <div className="font-semibold">{userAnalytics.most_productive_location.location_name}</div>
                     <div className="opacity-75">{userAnalytics.most_productive_location.shortloc}</div>
-                    <div className="opacity-75">Avg Rating: {userAnalytics.most_productive_location.average_rating.toFixed(1)}/5</div>
+                    <div className="opacity-75">No yap sessions here</div>
                   </div>
                 ) : (
                   <div className={`text-xs ${textColor} opacity-80`}>
@@ -421,6 +420,9 @@ export default function Index() {
                   <div className="space-y-1">
                     <div className={`font-bold ${textColor} text-lg`}>
                       {mostVisitedLocationData.name}
+                    </div>
+                    <div className={`text-sm ${textColor} opacity-75 flex items-center gap-1`}>
+                      <span>📍</span> {mostVisitedLocationData.shortloc}
                     </div>
                     <div className={`text-sm ${textColor} opacity-75`}>
                       Your go-to study spot
