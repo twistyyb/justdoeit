@@ -41,7 +41,7 @@ export function useTimeBasedGradient(): GradientColors {
             #24243e 60%,
             #1a1a2e 80%,
             #0f0c29 100%)`,
-          textColor: 'text-gray-100',
+          textColor: 'text-purple-100',
         };
       }
       // Pre-Dawn (4am-6am) - Deep blue to purple, hint of pink
@@ -55,7 +55,7 @@ export function useTimeBasedGradient(): GradientColors {
             #5a3d7f 60%,
             #7b4b94 80%,
             #9d5c9e 100%)`,
-          textColor: 'text-gray-100',
+          textColor: 'text-purple-50',
         };
       }
       // Dawn (6am-8am) - Orange, pink, and gold - magical sunrise
@@ -70,7 +70,7 @@ export function useTimeBasedGradient(): GradientColors {
             #FF8C5A 60%, 
             #FFB347 80%, 
             #FF9E64 100%)`,
-          textColor: 'text-gray-900',
+          textColor: 'text-orange-50',
         };
       }
       // Morning (8am-11am) - Bright and warm, energetic yellows
@@ -84,7 +84,7 @@ export function useTimeBasedGradient(): GradientColors {
             #ffe88a 60%,
             #fff5b8 80%,
             #fffbe8 100%)`,
-          textColor: 'text-gray-900',
+          textColor: 'text-amber-900',
         };
       }
       // Midday (11am-3pm) - Peak brightness, golden sunshine with sky blue
@@ -98,7 +98,7 @@ export function useTimeBasedGradient(): GradientColors {
             #ffd89b 60%,
             #ffcc70 80%,
             #ffb347 100%)`,
-          textColor: 'text-gray-900',
+          textColor: 'text-cyan-950',
         };
       }
       // Afternoon (3pm-5pm) - Warm golden, soft and pleasant
@@ -112,7 +112,7 @@ export function useTimeBasedGradient(): GradientColors {
             #ffe49d 60%,
             #ffbc6b 80%,
             #ff9a56 100%)`,
-          textColor: 'text-gray-900',
+          textColor: 'text-orange-900',
         };
       }
       // Sunset (5pm-7pm) - Dramatic oranges, pinks, and purples
@@ -128,7 +128,7 @@ export function useTimeBasedGradient(): GradientColors {
             #e73c7e 75%,
             #d946a0 90%,
             #c356b3 100%)`,
-          textColor: 'text-gray-900',
+          textColor: 'text-rose-100',
         };
       }
       // Dusk (7pm-9pm) - Purple, deep blue, romantic twilight
@@ -142,7 +142,7 @@ export function useTimeBasedGradient(): GradientColors {
             #9b59b6 60%,
             #6c3483 80%,
             #4a235a 100%)`,
-          textColor: 'text-gray-100',
+          textColor: 'text-violet-100',
         };
       }
       // Night (9pm-12am) - Deep blues, navy, peaceful evening
@@ -156,7 +156,7 @@ export function useTimeBasedGradient(): GradientColors {
             #2c5364 60%,
             #203a43 80%,
             #0f2027 100%)`,
-          textColor: 'text-gray-100',
+          textColor: 'text-slate-100',
         };
       }
 
