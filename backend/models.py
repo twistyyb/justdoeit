@@ -60,9 +60,17 @@ class LocationResponse(BaseModel):
     coordinate_x: Optional[float] = None
     coordinate_y: Optional[float] = None
 
+class MostProductiveLocation(BaseModel):
+    """Model for most productive location details"""
+    location_id: Optional[str] = None
+    location_name: Optional[str] = None
+    shortloc: Optional[str] = None
+    average_rating: float = 0.0
+
 class UserAnalyticsResponse(BaseModel):
     """Model for user analytics endpoint"""
     favorite_location: Optional[str] = None  # locationid UUID
+    most_productive_location: Optional[MostProductiveLocation] = None
     total_study_time: int  # Total minutes
     average_rating: float  # Average rating
     streak: int  # Consecutive days with sessions

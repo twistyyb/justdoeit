@@ -309,6 +309,7 @@ async def get_user_analytics(user_id: UUID):
     if not user_sessions:
         return UserAnalyticsResponse(
             favorite_location=None,
+            most_productive_location=None,
             total_study_time=0,
             average_rating=0.0,
             streak=0,
@@ -323,6 +324,41 @@ async def get_user_analytics(user_id: UUID):
             location_counts[locationid] = location_counts.get(locationid, 0) + 1
     
     favorite_location = max(location_counts, key=location_counts.get) if location_counts else None
+    
+    # Step 2.5: Calculate most productive location (highest average rating per location)
+    location_ratings = {}  # {location_id: [ratings]}
+    for session in user_sessions:
+        locationid = session.get('locationid')
+        rating = session.get('rating')
+        if locationid and rating is not None:
+            if locationid not in location_ratings:
+                location_ratings[locationid] = []
+            location_ratings[locationid].append(rating)
+    
+    # Calculate average rating per location and find max
+    most_productive_location_id = None
+    most_productive_avg_rating = 0.0
+    
+    for location_id, ratings_list in location_ratings.items():
+        if len(ratings_list) >= 1:  # Require at least 1 rating
+            avg_rating = sum(ratings_list) / len(ratings_list)
+            # In case of tie, prefer location with more sessions
+            if avg_rating > most_productive_avg_rating or \
+               (avg_rating == most_productive_avg_rating and len(ratings_list) > len(location_ratings.get(most_productive_location_id, []))):
+                most_productive_avg_rating = avg_rating
+                most_productive_location_id = location_id
+    
+    # Get location name and shortloc for most productive location
+    most_productive_location_name = None
+    most_productive_location_shortloc = None
+    if most_productive_location_id:
+        try:
+            loc_response = supabase.table("locations").select("name, shortloc").eq("id", most_productive_location_id).execute()
+            if loc_response.data:
+                most_productive_location_name = loc_response.data[0].get('name')
+                most_productive_location_shortloc = loc_response.data[0].get('shortloc')
+        except Exception as e:
+            logger.warning(f"Error fetching most productive location details: {e}")
     
     # Step 3: Calculate total study time (sum of durations)
     total_study_time = sum(s.get('duration', 0) or 0 for s in user_sessions)
@@ -404,8 +440,20 @@ async def get_user_analytics(user_id: UUID):
     buddy_counts = Counter(all_buddies)
     top_3_buddies = [buddy_id for buddy_id, _ in buddy_counts.most_common(3)]
     
+    # Build most productive location object
+    most_productive_location_obj = None
+    if most_productive_location_id and most_productive_location_name:
+        from models import MostProductiveLocation
+        most_productive_location_obj = MostProductiveLocation(
+            location_id=most_productive_location_id,
+            location_name=most_productive_location_name,
+            shortloc=most_productive_location_shortloc,
+            average_rating=round(most_productive_avg_rating, 2)
+        )
+    
     return UserAnalyticsResponse(
         favorite_location=favorite_location,
+        most_productive_location=most_productive_location_obj,
         total_study_time=total_study_time,
         average_rating=round(average_rating, 2),
         streak=streak,
