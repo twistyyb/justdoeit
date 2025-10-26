@@ -9,6 +9,8 @@ export interface Location {
   id: string;        // uuid
   name: string;
   shortloc: string;
+  summary?: string;
+  image?: string;
 }
 
 export interface CreateLocationRequest {

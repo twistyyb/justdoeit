@@ -59,31 +59,31 @@ export default function Index() {
       <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 p-4 md:p-8 min-h-screen">
         {/* Left sidebar - Recommendations */}
         <div className="md:col-span-1 flex flex-col">
-          <div className="space-y-6 bg-white/10 backdrop-blur-md border-2 border-white/20 rounded-3xl p-6">
-            <h2 className={`text-xl md:text-2xl font-bold ${textColor}`}>
+          <div className="space-y-4 bg-white/10 backdrop-blur-md border-2 border-white/20 rounded-3xl p-5">
+            <h2 className={`text-xl md:text-2xl font-bold ${textColor} mb-2`}>
               Recommendations
             </h2>
 
-            <RecommendationCard
-              spotName="Main stacks"
-              address="1526A Oxford Street, UC Berkeley"
-              description="Perfect for solo work. Quiet study area with limited distractions. Usually less crowded in the afternoon."
-              textColor={textColor}
-            />
-
-            <RecommendationCard
-              spotName="Café Saint Frank"
-              address="2450 Mission Street, San Francisco"
-              description="Casual study café with good coffee. Tends to be busy around lunch time. Great for collaborative studying."
-              textColor={textColor}
-            />
-
-            <RecommendationCard
-              spotName="The Study Spot"
-              address="45 Park Avenue, New York"
-              description="Modern co-working space with excellent amenities. Quieter in mornings. Good outlet availability throughout."
-              textColor={textColor}
-            />
+            {isPreloadingData ? (
+              <div className={`text-sm ${textColor} opacity-80 text-center py-4`}>
+                Loading recommendations...
+              </div>
+            ) : preloadedLocations.length > 0 ? (
+              preloadedLocations.slice(0, 3).map((location) => (
+                <RecommendationCard
+                  key={location.id}
+                  spotName={location.name}
+                  address={location.shortloc}
+                  description={location.summary || "No description available"}
+                  textColor={textColor}
+                  imageUrl={location.image}
+                />
+              ))
+            ) : (
+              <div className={`text-sm ${textColor} opacity-80 text-center py-4`}>
+                No recommendations available
+              </div>
+            )}
           </div>
         </div>
 

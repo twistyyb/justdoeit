@@ -44,6 +44,8 @@ class LocationSummary(BaseModel):
     id: str
     name: str
     shortloc: str
+    summary: Optional[str] = None
+    image: Optional[str] = None
 
 class LocationsListResponse(BaseModel):
     """Model for locations list endpoint response"""

@@ -134,8 +134,8 @@ async def get_user_profile(user_id: str):
 
 @app.get("/location_names", response_model=LocationsListResponse)
 async def location_names():
-    """Get all location names, IDs, and shortloc for dropdown/selection"""
-    response = supabase.table("locations").select("id", "name", "shortloc").execute()
+    """Get all location names, IDs, shortloc, summary, and image for dropdown/selection"""
+    response = supabase.table("locations").select("id", "name", "shortloc", "summary", "image").execute()
     
     # Convert Supabase data to our Pydantic model
     locations = [LocationSummary(**item) for item in response.data]
