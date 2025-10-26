@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 
 export const UserProfile: React.FC = () => {
-  const { user, signOut } = useAuth()
+  const { user, userProfile, signOut } = useAuth()
   const { toast } = useToast()
 
   const handleSignOut = async () => {
@@ -25,16 +25,19 @@ export const UserProfile: React.FC = () => {
 
   if (!user) return null
 
+  const displayName = userProfile?.name || user.email || 'User'
+  const avatarLetter = userProfile?.name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'
+
   return (
     <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md border-2 border-white/20 rounded-full px-4 py-2">
       <div className="flex items-center gap-2">
         <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
           <span className="text-white text-sm font-semibold">
-            {user.email?.charAt(0).toUpperCase()}
+            {avatarLetter}
           </span>
         </div>
         <span className="text-white text-sm font-medium">
-          {user.email}
+          {displayName}
         </span>
       </div>
       <Button

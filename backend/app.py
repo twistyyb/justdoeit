@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from supabase import Client
 from typing import List
 from models import SessionCreate, SessionResponse, LocationCreate, LocationResponse, LocationSummary, LocationsListResponse, LocationDetailsResponse, CrowdednessBin
+from pydantic import BaseModel
 import logging
 from uuid import UUID
 from startSupa import get_supabase
@@ -13,6 +14,21 @@ supabase = get_supabase()
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Pydantic models for user profile
+class UserProfileCreate(BaseModel):
+    user_id: str
+    name: str
+
+class UserProfileResponse(BaseModel):
+    message: str
+    data: dict
+
+class UserProfileGetResponse(BaseModel):
+    id: str
+    name: str
+    created_at: str
+    updated_at: str
 
 app = FastAPI(title="Just Doe It API", version="1.0.0")
 
@@ -61,6 +77,71 @@ async def create_location(location: LocationCreate):
     data = location.model_dump(mode='json')
     response = supabase.table("locations").insert(data).execute()
     return {"message": "Location created", "data": response.data}
+
+
+@app.post("/create_user_profile", response_model=UserProfileResponse)
+async def create_user_profile(profile: UserProfileCreate):
+    """
+    Create a user profile in the user_profiles table
+    """
+    logger.info(f"Creating user profile for user_id: {profile.user_id}, name: {profile.name}")
+    
+    try:
+        # Prepare the data for insertion
+        profile_data = {
+            "id": profile.user_id,
+            "name": profile.name
+        }
+        
+        # Insert into user_profiles table
+        response = supabase.table("user_profiles").insert(profile_data).execute()
+        
+        logger.info(f"User profile created successfully: {response.data}")
+        return UserProfileResponse(
+            message="User profile created successfully",
+            data=response.data[0] if response.data else {}
+        )
+        
+    except Exception as e:
+        logger.error(f"Error creating user profile: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create user profile: {str(e)}"
+        )
+
+
+@app.get("/user_profile/{user_id}", response_model=UserProfileGetResponse)
+async def get_user_profile(user_id: str):
+    """
+    Get user profile data by user ID
+    """
+    logger.info(f"Fetching user profile for user_id: {user_id}")
+    
+    try:
+        # Query the user_profiles table
+        response = supabase.table("user_profiles").select("*").eq("id", user_id).single().execute()
+        
+        if not response.data:
+            logger.warning(f"No profile found for user_id: {user_id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User profile not found"
+            )
+        
+        logger.info(f"User profile fetched successfully: {response.data}")
+        return UserProfileGetResponse(**response.data)
+        
+    except Exception as e:
+        logger.error(f"Error fetching user profile: {str(e)}")
+        if "not found" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User profile not found"
+            )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch user profile: {str(e)}"
+        )
 
 
 @app.get("/location_names", response_model=LocationsListResponse)
@@ -168,6 +249,9 @@ async def get_location_details(location_id: UUID):
         crowdedness_vs_time=crowdedness_data
         
     )
+
+
+
 
 if __name__ == "__main__":
     import uvicorn

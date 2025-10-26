@@ -12,7 +12,7 @@ export default function Index() {
   const [showLogModal, setShowLogModal] = useState(false);
   const [showRecentModal, setShowRecentModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const { gradient, name } = useTimeBasedGradient();
 
   return (
@@ -80,7 +80,7 @@ export default function Index() {
               </div>
               
               <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight mb-3">
-                Welcome Joyce,<br />
+                Welcome {userProfile?.name || 'there'},<br />
                 <span className="text-white/90">study today?</span>
               </h1>
               <p className="text-white/80 text-sm md:text-base">

@@ -1,6 +1,16 @@
 -- Database schema for Just Doe It application
 -- This file contains the table definitions for the application
 
+-- User profiles table to store additional user information
+create table public.user_profiles (
+  id uuid not null references auth.users(id) on delete cascade,
+  name character varying(255) not null,
+  created_at timestamp with time zone default now(),
+  updated_at timestamp with time zone default now(),
+  constraint user_profiles_pkey primary key (id)
+) TABLESPACE pg_default;
+
+
 create table public.locations (
   id uuid not null default gen_random_uuid (),
   name character varying(255) not null,
