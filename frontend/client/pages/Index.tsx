@@ -4,11 +4,13 @@ import { LogSessionModal } from "@/components/LogSessionModal";
 import { RecentSessionsModal } from "@/components/RecentSessionsModal";
 import { RecommendationCard } from "@/components/RecommendationCard";
 import { StudyContributionGraph } from "@/components/StudyContributionGraph";
+import { LocationMiniMap } from "@/components/LocationMiniMap";
 import { AuthModal } from "@/components/AuthModal";
 import { UserProfile } from "@/components/UserProfile";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { useTimeBasedGradient } from "@/hooks/useTimeBasedGradient";
 import { useSessionDataPreload } from "@/hooks/useSessionDataPreload";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import type { StudyBuddy } from "../../shared/api";
 
 // Type for user analytics response
@@ -32,6 +34,7 @@ export default function Index() {
   const [showLogModal, setShowLogModal] = useState(false);
   const [showRecentModal, setShowRecentModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showLocationMap, setShowLocationMap] = useState(false);
   const [expandedCardId, setExpandedCardId] = useState<string>('');
   const [userAnalytics, setUserAnalytics] = useState<UserAnalytics | null>(null);
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
@@ -171,21 +174,46 @@ export default function Index() {
                 Loading recommendations...
               </div>
             ) : preloadedLocations.length > 0 ? (
-              <div className="flex flex-col gap-4">
-                {preloadedLocations.slice(0, 3).map((location) => (
-                  <RecommendationCard
-                    key={location.id}
-                    locationId={location.id}
-                    spotName={location.name}
-                    address={location.shortloc}
-                    description={location.summary || "No description available"}
-                    textColor={textColor}
-                    imageUrl={location.image}
-                    isExpanded={expandedCardId === location.id}
-                    onExpand={handleCardExpand}
-                  />
-                ))}
-              </div>
+              <>
+                {/* Show either recommendation cards or mini map, not both */}
+                {!showLocationMap ? (
+                  <div className="flex flex-col gap-4 mb-4">
+                    {preloadedLocations.slice(0, 3).map((location) => (
+                      <RecommendationCard
+                        key={location.id}
+                        locationId={location.id}
+                        spotName={location.name}
+                        address={location.shortloc}
+                        description={location.summary || "No description available"}
+                        textColor={textColor}
+                        imageUrl={location.image}
+                        isExpanded={expandedCardId === location.id}
+                        onExpand={handleCardExpand}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mb-4 animate-in slide-in-from-top-4 duration-300">
+                    <LocationMiniMap 
+                      locations={preloadedLocations} 
+                      textColor={textColor} 
+                    />
+                  </div>
+                )}
+
+                {/* See All Locations Toggle Button */}
+                <button
+                  onClick={() => setShowLocationMap(!showLocationMap)}
+                  className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-white/30 ${textColor} font-semibold transition-all hover:bg-white/10 hover:border-white/50`}
+                >
+                  <span>{showLocationMap ? 'Show Recommendations' : 'See All Locations'}</span>
+                  {showLocationMap ? (
+                    <ChevronUp className="w-5 h-5" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5" />
+                  )}
+                </button>
+              </>
             ) : (
               <div className={`text-sm ${textColor} opacity-80 text-center py-4`}>
                 No recommendations available

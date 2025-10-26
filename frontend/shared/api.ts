@@ -11,6 +11,8 @@ export interface Location {
   shortloc: string;
   summary?: string;
   image?: string;
+  coordinate_x?: number;
+  coordinate_y?: number;
 }
 
 export interface CreateLocationRequest {

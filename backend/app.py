@@ -137,13 +137,51 @@ async def get_user_profile(user_id: str):
 
 @app.get("/location_names", response_model=LocationsListResponse)
 async def location_names():
-    """Get all location names, IDs, shortloc, summary, and image for dropdown/selection"""
-    response = supabase.table("locations").select("id", "name", "shortloc", "summary", "image").execute()
+    """Get all location names, IDs, shortloc, summary, image, and coordinates for dropdown/selection"""
+    response = supabase.table("locations").select("id", "name", "shortloc", "summary", "image", "coordinate_x", "coordinate_y").execute()
     
     # Convert Supabase data to our Pydantic model
     locations = [LocationSummary(**item) for item in response.data]
     
+    # Debug: Log coordinate data
+    coords_count = sum(1 for loc in locations if loc.coordinate_x is not None and loc.coordinate_y is not None)
+    logger.info(f"📍 Returning {len(locations)} locations, {coords_count} have coordinates")
+    
     return LocationsListResponse(locations=locations)
+
+
+@app.get("/locations_coordinate_status")
+async def get_locations_coordinate_status():
+    """
+    Debug endpoint to check which locations have coordinates.
+    Returns summary of locations and their coordinate status.
+    """
+    response = supabase.table("locations").select("id", "name", "shortloc", "coordinate_x", "coordinate_y").execute()
+    
+    locations_with_coords = []
+    locations_without_coords = []
+    
+    for loc in response.data:
+        loc_info = {
+            "id": loc.get("id"),
+            "name": loc.get("name"),
+            "shortloc": loc.get("shortloc"),
+            "coordinate_x": loc.get("coordinate_x"),
+            "coordinate_y": loc.get("coordinate_y"),
+        }
+        
+        if loc.get("coordinate_x") is not None and loc.get("coordinate_y") is not None:
+            locations_with_coords.append(loc_info)
+        else:
+            locations_without_coords.append(loc_info)
+    
+    return {
+        "total_locations": len(response.data),
+        "with_coordinates": len(locations_with_coords),
+        "without_coordinates": len(locations_without_coords),
+        "locations_with_coords": locations_with_coords,
+        "locations_without_coords": locations_without_coords,
+    }
 
 
 @app.get("/users", response_model=UsersListResponse)
