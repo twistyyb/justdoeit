@@ -198,13 +198,14 @@ async def get_location_details(location_id: UUID):
     
     # Step 5: Create crowdedness histogram
     # Initialize bins for 8 time periods (3 hours each)
+    pacific_tz = pytz.timezone('America/Los_Angeles')
     bins = {i: [] for i in range(8)}
     bin_names = [
         "00:00-03:00", "03:00-06:00", "06:00-09:00", "09:00-12:00",
         "12:00-15:00", "15:00-18:00", "18:00-21:00", "21:00-24:00"
     ]
     
-    # Step 6: Group sessions by time bin
+    # Step 6: Group sessions by time bin (in Pacific time)
     for session in sessions:
         if not session.get('inputtime'):
             continue
@@ -216,8 +217,14 @@ async def get_location_details(location_id: UUID):
             else:
                 input_time = session['inputtime']
             
-            # Get hour (0-23)
-            hour = input_time.hour
+            # Ensure timezone-aware and convert to Pacific time
+            if input_time.tzinfo is None:
+                input_time = input_time.replace(tzinfo=timezone.utc)
+            # Convert to Pacific timezone
+            input_time_pacific = input_time.astimezone(pacific_tz)
+            
+            # Get hour (0-23) in Pacific time
+            hour = input_time_pacific.hour
             
             # Determine which 3-hour bin (0-7)
             bin_num = hour // 3
