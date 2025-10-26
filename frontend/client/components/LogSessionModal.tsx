@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { X, Check } from "lucide-react";
 import { LocationSelector } from "./LocationSelector";
-import { CollaboratorSelector } from "./CollaboratorSelector";
+// import { CollaboratorSelector } from "./CollaboratorSelector"; // TODO: Re-enable when backend has user system
 import { apiClient } from "@/lib/api";
 
 interface LogSessionModalProps {
@@ -19,12 +19,12 @@ export function LogSessionModal({ isOpen, onClose }: LogSessionModalProps) {
   // Form state
   const [locationId, setLocationId] = useState<string | null>(null);
   const [inputTime, setInputTime] = useState(getCurrentDateTime());
-  const [duration, setDuration] = useState<number>(60);
+  const [duration, setDuration] = useState<string>("60");
   const [rating, setRating] = useState<number>(3); // Default to 3 (backend requires 1-5)
   const [cleanliness, setCleanliness] = useState<number>(3);
   const [comment, setComment] = useState("");
   const [outletAvailability, setOutletAvailability] = useState(true);
-  const [collaborators, setCollaborators] = useState<string[]>([]);
+  // const [collaborators, setCollaborators] = useState<string[]>([]); // TODO: Re-enable when backend has user system
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">(
     "idle"
@@ -55,10 +55,10 @@ export function LogSessionModal({ isOpen, onClose }: LogSessionModalProps) {
       // Prepare payload matching backend format
       // POST http://127.0.0.1:5002/create_session
       const payload = {
-        creators: collaborators, // List[uuid] including self
+        creators: [], // TODO: Add real user UUIDs when backend implements user system (GET /users endpoint needed)
         locationid: locationId,  // uuid from dropdown
         inputtime: new Date(inputTime).toISOString(), // ISO format with timezone
-        duration,                // int (mins)
+        duration: parseInt(duration) || 0,  // int (mins), convert string to number
         rating,                  // double (1-5)
         cleanliness,            // int (1-5)
         comment,                // str
@@ -79,12 +79,12 @@ export function LogSessionModal({ isOpen, onClose }: LogSessionModalProps) {
         // Reset form
         setLocationId(null);
         setInputTime(getCurrentDateTime());
-        setDuration(60);
+        setDuration("60");
         setRating(3); // Reset to valid default (1-5 range)
         setCleanliness(3);
         setComment("");
         setOutletAvailability(true);
-        setCollaborators([]);
+        // setCollaborators([]); // TODO: Re-enable when backend has user system
       }, 1500);
     } catch (error) {
       console.error("Error submitting session:", error);
@@ -145,9 +145,16 @@ export function LogSessionModal({ isOpen, onClose }: LogSessionModalProps) {
             </label>
             <input
               type="number"
-              min="1"
+              min="0"
               value={duration}
-              onChange={(e) => setDuration(Math.max(1, parseInt(e.target.value) || 1))}
+              onChange={(e) => setDuration(e.target.value)}
+              onBlur={(e) => {
+                // On blur, ensure we have a valid number
+                const val = e.target.value;
+                if (val === "" || parseInt(val) < 0) {
+                  setDuration("0");
+                }
+              }}
               className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-gray-900 font-semibold bg-white"
             />
           </div>
@@ -245,10 +252,16 @@ export function LogSessionModal({ isOpen, onClose }: LogSessionModalProps) {
           </div>
 
           {/* Collaborators */}
-          <CollaboratorSelector
+          {/* TODO: Re-enable CollaboratorSelector when backend implements:
+              1. Users table in database
+              2. GET /users endpoint to fetch users
+              3. POST /users endpoint for user registration
+              4. Authentication system (Supabase Auth integration)
+          */}
+          {/* <CollaboratorSelector
             selectedCollaborators={collaborators}
             onCollaboratorsChange={setCollaborators}
-          />
+          /> */}
 
           {/* Submit Status */}
           {submitStatus === "success" && (

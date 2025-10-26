@@ -1,22 +1,43 @@
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { LogSessionModal } from "@/components/LogSessionModal";
 import { RecentSessionsModal } from "@/components/RecentSessionsModal";
 import { RecommendationCard } from "@/components/RecommendationCard";
 import { AnalyticsCard } from "@/components/AnalyticsCard";
+import { AuthModal } from "@/components/AuthModal";
+import { UserProfile } from "@/components/UserProfile";
+import { useTimeBasedGradient } from "@/hooks/useTimeBasedGradient";
 
 export default function Index() {
   const [showLogModal, setShowLogModal] = useState(false);
   const [showRecentModal, setShowRecentModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const { user } = useAuth();
+  const { gradient, name } = useTimeBasedGradient();
 
   return (
     <div
-      className="min-h-screen w-full overflow-hidden"
+      className="min-h-screen w-full overflow-hidden transition-all duration-[3000ms] ease-in-out"
       style={{
-        backgroundImage: `linear-gradient(135deg, #8B3A3A 0%, #C85A54 25%, #FF8C5A 50%, #FFB347 75%, #FF9E64 100%)`,
+        backgroundImage: gradient,
       }}
     >
       {/* Overlay for depth */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20 pointer-events-none"></div>
+
+      {/* Header with user profile */}
+      <div className="absolute bottom-4 left-4 z-20 flex justify-start">
+        {user ? (
+          <UserProfile />
+        ) : (
+          <button
+            onClick={() => setShowAuthModal(true)}
+            className="bg-white/90 backdrop-blur-sm hover:bg-white text-gray-900 font-bold py-2 px-4 rounded-full text-sm shadow-lg transition-all hover:shadow-xl hover:scale-105"
+          >
+            Sign In
+          </button>
+        )}
+      </div>
 
       {/* Main grid layout */}
       <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 p-4 md:p-8 min-h-screen">
@@ -51,9 +72,16 @@ export default function Index() {
         <div className="md:col-span-1 flex flex-col justify-center items-center">
           <div className="text-center space-y-6">
             <div>
+              {/* Time of day indicator */}
+              <div className="mb-4 inline-block">
+                <span className="text-white/60 text-xs font-medium px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
+                  {name} ✨
+                </span>
+              </div>
+              
               <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight mb-3">
                 Welcome Joyce,<br />
-                <span className="text-orange-100">study today?</span>
+                <span className="text-white/90">study today?</span>
               </h1>
               <p className="text-white/80 text-sm md:text-base">
                 You studied 5 days in a row, 200 hours in the past week!
@@ -131,6 +159,10 @@ export default function Index() {
       <RecentSessionsModal
         isOpen={showRecentModal}
         onClose={() => setShowRecentModal(false)}
+      />
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
       />
     </div>
   );

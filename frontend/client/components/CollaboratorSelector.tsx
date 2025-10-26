@@ -1,3 +1,18 @@
+/**
+ * CollaboratorSelector Component
+ * 
+ * ⚠️ CURRENTLY NON-FUNCTIONAL - Backend user system not implemented
+ * 
+ * This component is disabled until backend has:
+ * 1. Users table in database (schema.sql)
+ * 2. GET /users endpoint to fetch real users
+ * 3. POST /users endpoint for user registration
+ * 4. Authentication system (Supabase Auth)
+ * 
+ * Current issue: Uses dummy user IDs ("user-1", "user-2", etc.) which are
+ * NOT valid UUIDs and cause database errors when creating sessions.
+ */
+
 import { useState, useEffect } from "react";
 import { X, Search } from "lucide-react";
 
@@ -17,6 +32,10 @@ export function CollaboratorSelector({
   onCollaboratorsChange,
 }: CollaboratorSelectorProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // ⚠️ DUMMY DATA - CANNOT BE USED WITH REAL BACKEND
+  // These fake IDs are NOT valid UUIDs and will cause database errors
+  // Replace with real data from backend when user system is implemented
   const [allUsers, setAllUsers] = useState<User[]>([
     { id: "user-1", name: "Bryan Chen", email: "bryan@example.com" },
     { id: "user-2", name: "Andrew Smith", email: "andrew@example.com" },
@@ -26,11 +45,14 @@ export function CollaboratorSelector({
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
 
-  // In production, fetch from /api/users
+  // TODO: Fetch real users from backend when GET /users endpoint is implemented
   useEffect(() => {
-    // dummy fetch: const res = await fetch('/api/users');
-    // const data = await res.json();
-    // setAllUsers(data);
+    // Example implementation when backend is ready:
+    // const fetchUsers = async () => {
+    //   const users = await apiClient.getUsers();
+    //   setAllUsers(users);
+    // };
+    // fetchUsers();
   }, []);
 
   useEffect(() => {

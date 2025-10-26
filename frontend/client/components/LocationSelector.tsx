@@ -82,11 +82,16 @@ export function LocationSelector({
         <div className="flex gap-2">
           <select
             value={selectedLocation || ""}
-            onChange={(e) => onLocationSelect(e.target.value)}
+            onChange={(e) => {
+              console.log("Location selected:", e.target.value);
+              if (e.target.value) {
+                onLocationSelect(e.target.value);
+              }
+            }}
             disabled={isLoading}
             className="flex-1 border-2 border-gray-300 rounded-lg px-4 py-3 text-gray-900 font-semibold bg-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <option value="">
+            <option value="" disabled>
               {isLoading ? "Loading locations..." : "Select a location"}
             </option>
             {locations.map((loc) => (
