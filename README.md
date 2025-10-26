@@ -83,12 +83,14 @@ cd backend
 pip install -r requirements.txt
 python startSupa.py
 uvicorn app:app --reload  # runs on port 5002
+```
 
 ### Frontend Setup
 ```bash
 cd frontend
 pnpm install
 pnpm dev  # http://localhost:8080
+```
 
 ## 📱 Product Roadmap
 ### 🎯 Live Now
