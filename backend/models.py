@@ -107,3 +107,12 @@ class UserSummary(BaseModel):
 class UsersListResponse(BaseModel):
     """Model for users list endpoint response"""
     users: List[UserSummary]
+
+class SessionTimeDuration(BaseModel):
+    """Model for session time and duration data"""
+    inputtime: Optional[datetime] = None
+    duration: Optional[int] = None
+
+class UserSessionsTimeResponse(BaseModel):
+    """Model for user sessions time/duration endpoint response"""
+    sessions: List[SessionTimeDuration]

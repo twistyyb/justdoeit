@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from supabase import Client
 from typing import List
-from models import SessionCreate, SessionResponse, LocationCreate, LocationResponse, LocationSummary, LocationsListResponse, LocationDetailsResponse, CrowdednessBin, UserSummary, UsersListResponse, UserAnalyticsResponse
+from models import SessionCreate, SessionResponse, LocationCreate, LocationResponse, LocationSummary, LocationsListResponse, LocationDetailsResponse, CrowdednessBin, UserSummary, UsersListResponse, UserAnalyticsResponse, SessionTimeDuration, UserSessionsTimeResponse
 from pydantic import BaseModel
 import logging
 from uuid import UUID
@@ -401,6 +401,72 @@ async def get_user_analytics(user_id: UUID):
         streak=streak,
         study_buddies=top_3_buddies
     )
+
+
+@app.get("/user_sessions_time/{user_id}", response_model=UserSessionsTimeResponse)
+async def get_user_sessions_time(user_id: UUID):
+    """
+    Get all study sessions for a user with their input times and durations.
+    Returns a list of sessions containing only inputtime and duration fields.
+    """
+    # Convert UUID to string
+    user_id_str = str(user_id)
+    
+    # Step 1: Check if user exists first
+    try:
+        profile_response = supabase.table("user_profiles").select("id").eq("id", user_id_str).execute()
+        if not profile_response.data:
+            raise HTTPException(status_code=404, detail="User not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning(f"Error checking user profile: {e}")
+        # If profile check fails, continue (maybe user exists but not in profiles yet)
+    
+    # Step 2: Fetch sessions where user is in creators array
+    try:
+        sessions_response = supabase.table("sessions")\
+            .select("inputtime", "duration")\
+            .contains("creators", [user_id_str])\
+            .execute()
+        user_sessions = sessions_response.data
+        logger.info(f"Found {len(user_sessions)} sessions for user {user_id_str}")
+    except Exception as e:
+        # Fallback: If array filter doesn't work, fetch all and filter in Python
+        logger.warning(f"Array filter failed: {e}, falling back to Python filtering")
+        sessions_response = supabase.table("sessions").select("inputtime", "duration", "creators").execute()
+        user_sessions = []
+        for session in sessions_response.data:
+            creators = session.get('creators')
+            if creators:
+                creators_list = list(creators) if not isinstance(creators, list) else creators
+                creators_str = [str(c) for c in creators_list]
+                if user_id_str in creators_str:
+                    # Only include inputtime and duration fields
+                    user_sessions.append({
+                        "inputtime": session.get("inputtime"),
+                        "duration": session.get("duration")
+                    })
+        logger.info(f"Found {len(user_sessions)} sessions for user {user_id_str} using Python filter")
+    
+    # Step 3: Convert to Pydantic models
+    session_objects = []
+    for session in user_sessions:
+        # Parse inputtime if it's a string
+        inputtime = session.get('inputtime')
+        if inputtime and isinstance(inputtime, str):
+            try:
+                inputtime = datetime.fromisoformat(inputtime.replace('Z', '+00:00'))
+            except Exception as e:
+                logger.error(f"Error parsing inputtime: {e}")
+                inputtime = None
+        
+        session_objects.append(SessionTimeDuration(
+            inputtime=inputtime,
+            duration=session.get('duration')
+        ))
+    
+    return UserSessionsTimeResponse(sessions=session_objects)
 
 if __name__ == "__main__":
     import uvicorn
