@@ -5,7 +5,7 @@ from datetime import datetime
 # Sessions Models
 class SessionCreate(BaseModel):
     """Model for creating a study session"""
-    id: Optional[str] = None  # Auto-generated UUID
+    # Auto-generated UUID we never pass in a session_id through the form we let supabase auto generate it
     locationid: str  # Required
     inputtime: Optional[datetime] = None
     duration: Optional[int] = None
@@ -17,7 +17,7 @@ class SessionCreate(BaseModel):
 
 class SessionResponse(BaseModel):
     """Model for returning a session"""
-    id: str
+    id: str # expecting to get the string auto generated uuid by supabase
     locationid: str
     inputtime: Optional[datetime] = None
     duration: Optional[int] = None
@@ -30,7 +30,7 @@ class SessionResponse(BaseModel):
 # Locations Models
 class LocationCreate(BaseModel):
     """Model for creating a location"""
-    id: Optional[str] = None  # Auto-generated UUID
+    # Auto-generated UUID we never pass in a location_id through the form we let supabase auto generate it
     name: str = Field(..., max_length=255)  # Required
     shortloc: str = Field(..., max_length=100)  # Required
     summary: Optional[str] = None
@@ -39,7 +39,7 @@ class LocationCreate(BaseModel):
 
 class LocationResponse(BaseModel):
     """Model for returning a location"""
-    id: str
+    id: str # expecting to get the string auto generated uuid by supabase
     name: str
     shortloc: str
     summary: Optional[str] = None

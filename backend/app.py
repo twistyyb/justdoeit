@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from supabase import Client
 from typing import List
+from models import SessionCreate, SessionResponse, LocationCreate, LocationResponse, LocationSummary
 import logging
 from startSupa import get_supabase
 
@@ -48,16 +49,15 @@ async def respond(request: Request):
 
 
 @app.post("/create_session")
-async def create_location(request: Request):
-    data = await request.json()
-    print(f"received data: {data}")
+async def create_session(session: SessionCreate): #data validated by pydantic model
+    data = session.model_dump() # Convert Pydantic model to Pythony dict to insert into Supabase table as a row
     response = supabase.table("sessions").insert(data).execute()
     return {"message": "Session created", "data": response.data}
 
 
 @app.post("/create_location")
-async def create_location(request: Request):
-    data = await request.json()
+async def create_location(location: LocationCreate):
+    data = location.model_dump()
     response = supabase.table("locations").insert(data).execute()
     return {"message": "Location created", "data": response.data}
 
