@@ -35,10 +35,11 @@ def get_study_recommendation_with_full_context(location_info, sessions_info):
     All locations are given here:
     {location_info}
 
-    
+
     {sessions_info}
     - Average rating is a user's PRODUCTIVENESS evaluation of the location.
 
+    Take into account the user's entire study history and come to an educated decision on the next location the user should try.
     Choose the three best study locations the user should try. Under all circumstances, you must choose exactly three.
     The recommendations must:
     - Be untried by the user, unless the user has already tried all the locations.
@@ -48,6 +49,8 @@ def get_study_recommendation_with_full_context(location_info, sessions_info):
     - Match user's most visited locations' outlet availability.
     - Take into account user's comments on the location.
     - Take into account the description of the location.
+
+    
 
     
     """

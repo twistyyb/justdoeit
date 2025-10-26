@@ -190,7 +190,7 @@ async def get_all_location_info():
                 "summary": location.get('summary', ''),
                 "coordinate_x": location.get('coordinate_x', 0.0),
                 "coordinate_y": location.get('coordinate_y', 0.0),
-                "average_rating": 0.0,
+                "average_productivity_rating": 0.0,
                 "average_cleanliness": 0.0,
                 "crowdedness_vs_time": {},
                 "error": str(e)
