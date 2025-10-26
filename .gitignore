@@ -21,7 +21,6 @@ wheels/
 .installed.cfg
 *.egg
 .env
-*/.env
 
 # Virtual environments
 venv/
@@ -84,7 +83,3 @@ dist-ssr
 *.sw?
 
 .config/
-.env
-
-backend/.env
-frontend/.env
