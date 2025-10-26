@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import L from "leaflet";
 import type { Location } from "shared/api";
+import { RecommendationCard } from "./RecommendationCard";
 import "leaflet/dist/leaflet.css";
 
 // Custom marker icon using emoji
@@ -37,6 +38,8 @@ interface LocationMiniMapProps {
 
 export function LocationMiniMap({ locations, textColor }: LocationMiniMapProps) {
   const [mapReady, setMapReady] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+  const [expandedCardId, setExpandedCardId] = useState<string>('');
   
   // Filter locations with valid coordinates and convert to lat/lng
   const validLocations = locations
@@ -78,10 +81,15 @@ export function LocationMiniMap({ locations, textColor }: LocationMiniMapProps) 
   const centerLat = berkeleyCenter.lat;
   const centerLng = berkeleyCenter.lng;
 
+  // Determine if card is expanded
+  const isExpanded = expandedCardId === selectedLocation?.id;
+  
   return (
     <div className="relative w-full">
-      {/* Map Container */}
-      <div className="relative border-2 border-white/30 rounded-2xl overflow-hidden shadow-2xl h-[400px] max-h-[50vh]">
+      {/* Map Container - shrinks when card is expanded */}
+      <div className={`relative border-2 border-white/30 rounded-2xl overflow-hidden shadow-2xl transition-all duration-500 ease-out ${
+        isExpanded ? 'h-[150px] max-h-[20vh]' : 'h-[400px] max-h-[50vh]'
+      }`}>
         <MapContainer
           center={[centerLat, centerLng]}
           zoom={14}
@@ -102,136 +110,54 @@ export function LocationMiniMap({ locations, textColor }: LocationMiniMapProps) 
               key={location.id}
               position={[location.lat, location.lng]}
               icon={createCustomIcon()}
-            >
-              {/* Mini-message board popup */}
-              <Popup className="custom-popup" maxWidth={500} minWidth={400} autoPan={true}>
-                <div className="popup-content">
-                  <div className="popup-text">
-                    <h3 className="location-name">
-                      {location.name}
-                    </h3>
-                    
-                    {location.shortloc && (
-                      <p className="location-address">
-                        {location.shortloc}
-                      </p>
-                    )}
-                    
-                    {location.summary && (
-                      <p className="location-summary">
-                        {location.summary}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </Popup>
-            </Marker>
+              eventHandlers={{
+                click: () => {
+                  // Find full location data from original locations array
+                  const fullLocation = locations.find(loc => loc.id === location.id);
+                  if (fullLocation) {
+                    setSelectedLocation(fullLocation);
+                  }
+                }
+              }}
+            />
           ))}
         </MapContainer>
       </div>
 
-      {/* Legend */}
-      <div className={`mt-3 text-xs ${textColor} opacity-60 text-center`}>
-        🗺️ Click on markers to see details • Use mouse wheel or +/- to zoom • Drag to pan
-      </div>
+      {/* Selected Location Card - shows when a marker is clicked */}
+      {selectedLocation && (
+        <div className="mt-4 animate-in slide-in-from-top-4 duration-300">
+          <RecommendationCard
+            locationId={selectedLocation.id}
+            spotName={selectedLocation.name}
+            address={selectedLocation.shortloc || ''}
+            description={selectedLocation.summary || 'No description available'}
+            textColor={textColor}
+            imageUrl={selectedLocation.image}
+            isExpanded={expandedCardId === selectedLocation.id}
+            onExpand={(locationId) => {
+              setExpandedCardId(locationId);
+              // If collapsing, clear selection after animation
+              if (!locationId && expandedCardId === selectedLocation.id) {
+                setTimeout(() => setSelectedLocation(null), 300);
+              }
+            }}
+          />
+          {/* Close button */}
+          <button
+            onClick={() => {
+              setExpandedCardId('');
+              setSelectedLocation(null);
+            }}
+            className={`mt-2 w-full text-xs ${textColor} opacity-70 hover:opacity-100 transition-opacity`}
+          >
+            ✕ Close
+          </button>
+        </div>
+      )}
       
-      {/* Additional styling for custom popups */}
+      {/* Styling for map markers */}
       <style>{`
-        /* Popup container styling */
-        .leaflet-popup-content-wrapper {
-          border-radius: 20px;
-          box-shadow: 0 20px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.1);
-          padding: 0;
-          background: linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(250,250,250,0.98) 100%);
-          backdrop-filter: blur(10px);
-          overflow: hidden;
-        }
-        
-        .leaflet-popup-content {
-          margin: 0;
-          width: 200px !important;
-          max-width: 200px !important;
-        }
-        
-        .leaflet-popup-tip {
-          background: rgba(255,255,255,0.98);
-        }
-        
-        /* Popup content layout - horizontal */
-        .popup-content {
-          display: flex;
-          align-items: flex-start;
-          gap: 12px;
-          padding: 12px;
-          width: 200px;
-          max-height: 140px;
-          overflow-wrap: break-word;
-          word-wrap: break-word;
-        }
-        
-        /* Emoji badge - left side */
-        .emoji-badge {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 44px;
-          height: 44px;
-          min-width: 44px;
-          font-size: 22px;
-          background: linear-gradient(135deg, #fb923c 0%, #ec4899 100%);
-          border-radius: 50%;
-          box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
-        }
-        
-        /* Text content - right side */
-        .popup-text {
-          flex: 1;
-          min-width: 0;
-          overflow-wrap: break-word;
-          word-wrap: break-word;
-          width: 0; /* Force text to respect container width */
-        }
-        
-        /* Location name */
-        .location-name {
-          font-size: 15px;
-          font-weight: 700;
-          color: #111827;
-          margin: 0 0 3px 0;
-          line-height: 1.2;
-          letter-spacing: -0.01em;
-          overflow-wrap: break-word;
-          word-wrap: break-word;
-          word-break: break-word;
-        }
-        
-        /* Location address */
-        .location-address {
-          font-size: 11px;
-          font-weight: 500;
-          color: #6b7280;
-          margin: 0 0 6px 0;
-          line-height: 1.3;
-          overflow-wrap: break-word;
-          word-wrap: break-word;
-          word-break: break-word;
-        }
-        
-        /* Location summary */
-        .location-summary {
-          font-size: 11px;
-          color: #374151;
-          line-height: 1.4;
-          margin: 0;
-          padding-top: 6px;
-          border-top: 1px solid rgba(0,0,0,0.08);
-          overflow-wrap: break-word;
-          word-wrap: break-word;
-          word-break: break-word;
-          max-height: 50px;
-          overflow: hidden;
-        }
-        
         /* Map marker styling */
         .custom-map-marker {
           background: transparent;
@@ -246,29 +172,6 @@ export function LocationMiniMap({ locations, textColor }: LocationMiniMapProps) 
         /* Leaflet container */
         .leaflet-container {
           font-family: inherit;
-        }
-        
-        /* Close button styling */
-        .leaflet-popup-close-button {
-          font-size: 22px !important;
-          padding: 8px !important;
-          width: 32px !important;
-          height: 32px !important;
-          color: #9ca3af !important;
-          font-weight: 300 !important;
-          display: flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          border-radius: 50% !important;
-          transition: all 0.2s ease !important;
-          right: 6px !important;
-          top: 6px !important;
-        }
-        
-        .leaflet-popup-close-button:hover {
-          color: #111827 !important;
-          background: rgba(0,0,0,0.05) !important;
-          transform: scale(1.1) !important;
         }
       `}</style>
     </div>
