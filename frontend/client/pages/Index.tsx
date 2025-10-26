@@ -302,7 +302,9 @@ export default function Index() {
                   isLoadingAnalytics ? (
                     "Loading your study stats..."
                   ) : userAnalytics ? (
-                    `You studied ${userAnalytics.streak} days in a row, ${Math.round(userAnalytics.total_study_time / 60)} hours total!`
+                    <>
+                      You studied {userAnalytics.streak} days in a <strong>row</strong>, {Math.round(userAnalytics.total_study_time / 60)} hours <strong>total</strong>!
+                    </>
                   ) : (
                     "Start logging sessions to see your stats!"
                   )
