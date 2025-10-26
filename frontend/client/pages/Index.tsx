@@ -58,9 +58,9 @@ export default function Index() {
       {/* Main grid layout */}
       <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 p-4 md:p-8 min-h-screen">
         {/* Left sidebar - Recommendations */}
-        <div className="md:col-span-1 flex flex-col">
-          <div className="space-y-4 bg-white/10 backdrop-blur-md border-2 border-white/20 rounded-3xl p-5">
-            <h2 className={`text-xl md:text-2xl font-bold ${textColor} mb-2`}>
+        <div className="md:col-span-1 flex flex-col h-full">
+          <div className="flex flex-col h-full bg-white/10 backdrop-blur-md border-2 border-white/20 rounded-3xl p-5">
+            <h2 className={`text-xl md:text-2xl font-bold ${textColor} mb-4`}>
               Recommendations
             </h2>
 
@@ -69,16 +69,18 @@ export default function Index() {
                 Loading recommendations...
               </div>
             ) : preloadedLocations.length > 0 ? (
-              preloadedLocations.slice(0, 3).map((location) => (
-                <RecommendationCard
-                  key={location.id}
-                  spotName={location.name}
-                  address={location.shortloc}
-                  description={location.summary || "No description available"}
-                  textColor={textColor}
-                  imageUrl={location.image}
-                />
-              ))
+              <div className="flex flex-col gap-4 flex-1">
+                {preloadedLocations.slice(0, 3).map((location) => (
+                  <RecommendationCard
+                    key={location.id}
+                    spotName={location.name}
+                    address={location.shortloc}
+                    description={location.summary || "No description available"}
+                    textColor={textColor}
+                    imageUrl={location.image}
+                  />
+                ))}
+              </div>
             ) : (
               <div className={`text-sm ${textColor} opacity-80 text-center py-4`}>
                 No recommendations available

@@ -14,35 +14,32 @@ export function RecommendationCard({
   imageUrl,
 }: RecommendationCardProps) {
   return (
-    <div className="mb-3">
-      {/* Grouped transparent box */}
-      <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-2xl p-3">
-        <h3 className={`text-base md:text-lg font-bold ${textColor} mb-2`}>
-          {spotName}
-        </h3>
-        
-        {/* Image */}
+    <div className="flex-1 flex flex-col">
+      {/* Card with image as background */}
+      <div className="relative overflow-hidden border border-white/20 rounded-2xl p-5 flex-1 flex flex-col justify-between">
+        {/* Semi-transparent background image */}
         {imageUrl && (
-          <div className="mb-2 flex justify-center">
-            <div className="rounded-lg overflow-hidden" style={{ aspectRatio: '16/9', height: '80px', width: 'auto' }}>
-              <img 
-                src={imageUrl} 
-                alt={spotName}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  // Hide image if it fails to load
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-            </div>
-          </div>
+          <div 
+            className="absolute inset-0 bg-cover bg-center opacity-20"
+            style={{ backgroundImage: `url(${imageUrl})` }}
+          />
         )}
         
-        <div className={`text-xs font-semibold ${textColor} opacity-90 mb-1.5`}>
-          📍 {address}
-        </div>
-        <div className={`text-xs ${textColor} opacity-80 line-clamp-2`}>
-          {description}
+        {/* Backdrop blur overlay for better text readability */}
+        <div className="absolute inset-0 bg-white/5 backdrop-blur-sm" />
+        
+        {/* Content layer */}
+        <div className="relative z-10 flex flex-col justify-center h-full">
+          <h3 className={`text-lg md:text-xl font-bold ${textColor} mb-3`}>
+            {spotName}
+          </h3>
+          
+          <div className={`text-sm font-semibold ${textColor} opacity-90 mb-2`}>
+            📍 {address}
+          </div>
+          <div className={`text-sm ${textColor} opacity-80 line-clamp-3`}>
+            {description}
+          </div>
         </div>
       </div>
     </div>
