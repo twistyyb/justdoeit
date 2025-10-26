@@ -13,7 +13,7 @@ export default function Index() {
   const [showRecentModal, setShowRecentModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { user, userProfile } = useAuth();
-  const { gradient, name } = useTimeBasedGradient();
+  const { gradient, name, textColor } = useTimeBasedGradient();
 
   return (
     <div
@@ -44,7 +44,7 @@ export default function Index() {
         {/* Left sidebar - Recommendations */}
         <div className="md:col-span-1 flex flex-col">
           <div className="space-y-6 bg-white/10 backdrop-blur-md border-2 border-white/20 rounded-3xl p-6">
-            <h2 className="text-xl md:text-2xl font-bold text-white">
+            <h2 className={`text-xl md:text-2xl font-bold ${textColor}`}>
               Recommendations
             </h2>
 
@@ -52,18 +52,21 @@ export default function Index() {
               spotName="Main stacks"
               address="1526A Oxford Street, UC Berkeley"
               description="Perfect for solo work. Quiet study area with limited distractions. Usually less crowded in the afternoon."
+              textColor={textColor}
             />
 
             <RecommendationCard
               spotName="Café Saint Frank"
               address="2450 Mission Street, San Francisco"
               description="Casual study café with good coffee. Tends to be busy around lunch time. Great for collaborative studying."
+              textColor={textColor}
             />
 
             <RecommendationCard
               spotName="The Study Spot"
               address="45 Park Avenue, New York"
               description="Modern co-working space with excellent amenities. Quieter in mornings. Good outlet availability throughout."
+              textColor={textColor}
             />
           </div>
         </div>
@@ -111,7 +114,7 @@ export default function Index() {
         {/* Right sidebar - Analytics */}
         <div className="md:col-span-1 flex flex-col">
           <div className="space-y-3 bg-white/10 backdrop-blur-md border-2 border-white/20 rounded-3xl p-6">
-            <h2 className="text-xl md:text-2xl font-bold text-white mb-6">
+            <h2 className={`text-xl md:text-2xl font-bold ${textColor} mb-6`}>
               Personal Analytics
             </h2>
 
@@ -119,30 +122,31 @@ export default function Index() {
               title="Github graph of study time density"
               subtitle="(Placeholder - would show actual chart)"
               content="📊 Study intensity visualization"
+              textColor={textColor}
             />
 
-            <div className="bg-orange-200/70 backdrop-blur-sm border-2 border-orange-400 rounded-2xl p-4 mb-4">
-              <div className="text-sm font-bold text-gray-900 mb-2">
+            <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-2xl p-4 mb-4">
+              <div className={`text-sm font-bold ${textColor} mb-2`}>
                 You were most productive studying at...
               </div>
-              <div className="text-xs text-gray-700">
+              <div className={`text-xs ${textColor} opacity-90`}>
                 <div className="font-semibold">Café Saint Frank</div>
                 <div className="mt-1">SF</div>
-                <div className="mt-2 text-gray-600">
+                <div className={`mt-2 ${textColor} opacity-80`}>
                   Usually busy around this time
                 </div>
               </div>
             </div>
 
-            <div className="bg-orange-200/70 backdrop-blur-sm border-2 border-orange-400 rounded-2xl p-4">
-              <div className="text-sm font-bold text-gray-900 mb-3">
+            <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-2xl p-4">
+              <div className={`text-sm font-bold ${textColor} mb-3`}>
                 Your favorite collaborators were:
               </div>
               <div className="flex gap-2">
-                <button className="flex-1 bg-orange-300 hover:bg-orange-400 text-gray-900 font-semibold py-2 px-3 rounded-lg transition-colors text-sm">
+                <button className={`flex-1 bg-white/10 hover:bg-white/20 ${textColor} font-semibold py-2 px-3 rounded-lg transition-colors text-sm border border-white/20`}>
                   User Bryan
                 </button>
-                <button className="flex-1 bg-orange-300 hover:bg-orange-400 text-gray-900 font-semibold py-2 px-3 rounded-lg transition-colors text-sm">
+                <button className={`flex-1 bg-white/10 hover:bg-white/20 ${textColor} font-semibold py-2 px-3 rounded-lg transition-colors text-sm border border-white/20`}>
                   User Andrew
                 </button>
               </div>
