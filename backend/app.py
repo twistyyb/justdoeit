@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from supabase import Client
 from typing import List
-from models import SessionCreate, SessionResponse, LocationCreate, LocationResponse, LocationSummary
+from models import SessionCreate, SessionResponse, LocationCreate, LocationResponse, LocationSummary, LocationsListResponse
 import logging
 from startSupa import get_supabase
 
@@ -50,33 +50,27 @@ async def respond(request: Request):
 
 @app.post("/create_session")
 async def create_session(session: SessionCreate): #data validated by pydantic model
-    data = session.model_dump() # Convert Pydantic model to Pythony dict to insert into Supabase table as a row
+    data = session.model_dump() # Convert Pydantic model to Python dict to insert into Supabase table as a row
     response = supabase.table("sessions").insert(data).execute()
-    return {"message": "Session created", "data": response.data}
+    return response[0]
 
 
 @app.post("/create_location")
 async def create_location(location: LocationCreate):
     data = location.model_dump()
     response = supabase.table("locations").insert(data).execute()
-    return {"message": "Location created", "data": response.data}
+    return response[0]
 
 
-@app.get("/location_names")
+@app.get("/location_names", response_model=LocationsListResponse)
 async def location_names():
+    """Get all location names, IDs, and shortloc for dropdown/selection"""
     response = supabase.table("locations").select("id", "name", "shortloc").execute()
-
-    return {
-        "locations": [
-            {
-                "id": item["id"],
-                "name": item["name"],
-                "shortloc": item["shortloc"]
-            }
-            for item in response.data
-        ]
-    }
-
+    
+    # Convert Supabase data to our Pydantic model
+    locations = [LocationSummary(**item) for item in response.data]
+    
+    return LocationsListResponse(locations=locations)
 
 if __name__ == "__main__":
     import uvicorn

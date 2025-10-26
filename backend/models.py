@@ -37,8 +37,18 @@ class LocationCreate(BaseModel):
     coordinate_x: Optional[float] = None
     coordinate_y: Optional[float] = None
 
+class LocationSummary(BaseModel):
+    """Model for location summary (dropdown/list)"""
+    id: str
+    name: str
+    shortloc: str
+
+class LocationsListResponse(BaseModel):
+    """Model for locations list endpoint response"""
+    locations: List[LocationSummary]
+
 class LocationResponse(BaseModel):
-    """Model for returning a location"""
+    """Model for returning a full location"""
     id: str # expecting to get the string auto generated uuid by supabase
     name: str
     shortloc: str
