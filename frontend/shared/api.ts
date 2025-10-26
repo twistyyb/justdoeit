@@ -110,6 +110,11 @@ export interface PaginatedResponse<T> {
 
 // === Study Analytics Types ===
 
+export interface StudyBuddy {
+  user_id: string;
+  session_count: number;
+}
+
 export interface SessionTimeDuration {
   inputtime: string | null;
   duration: number | null; // in minutes

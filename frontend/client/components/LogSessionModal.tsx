@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { LocationSelector } from "./LocationSelector";
 import { CollaboratorSelector } from "./CollaboratorSelector";
@@ -54,6 +54,25 @@ export function LogSessionModal({
     "idle"
   );
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+
+  // Handle modal visibility animations
+  useEffect(() => {
+    if (isOpen) {
+      setIsVisible(true);
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = 'hidden';
+    } else {
+      setIsVisible(false);
+      // Restore body scroll when modal is closed
+      document.body.style.overflow = 'unset';
+    }
+
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
 
   // Handle new location creation to keep preloaded data fresh
   const handleLocationCreated = (newLocation: Location) => {
@@ -177,23 +196,42 @@ export function LogSessionModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+    <div 
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 ${
+        isVisible 
+          ? 'bg-black/50 backdrop-blur-sm opacity-100' 
+          : 'bg-black/0 backdrop-blur-none opacity-0'
+      }`}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div 
+        className={`bg-white rounded-3xl w-full max-w-2xl shadow-2xl transition-all duration-300 transform ${
+          isVisible 
+            ? 'scale-100 opacity-100 translate-y-0' 
+            : 'scale-95 opacity-0 translate-y-4'
+        }`}
+        style={{ maxHeight: '90vh' }}
+      >
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b-2 border-gray-200 flex justify-between items-center p-6 rounded-t-3xl">
+        <div className="sticky top-0 bg-white border-b-2 border-gray-200 flex justify-between items-center p-6 rounded-t-3xl z-10">
           <h2 className="text-3xl font-bold text-gray-900">
             {userProfile?.name || user?.email || "User"}'s New Session
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
+            className="text-gray-500 hover:text-gray-700 transition-colors p-1 rounded-full hover:bg-gray-100"
           >
             <X className="w-7 h-7" />
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        {/* Scrollable Form Content */}
+        <div className="overflow-y-auto" style={{ maxHeight: 'calc(90vh - 100px)' }}>
+          <form onSubmit={handleSubmit} className="p-6 space-y-6">
 
           {/* Location */}
           <div>
@@ -419,7 +457,8 @@ export function LogSessionModal({
           >
             {isSubmitting ? "Submitting..." : "Log Session"}
           </button>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );

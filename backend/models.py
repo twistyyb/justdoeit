@@ -67,6 +67,11 @@ class MostProductiveLocation(BaseModel):
     shortloc: Optional[str] = None
     average_rating: float = 0.0
 
+class StudyBuddy(BaseModel):
+    """Model for study buddy with session count"""
+    user_id: str
+    session_count: int
+
 class UserAnalyticsResponse(BaseModel):
     """Model for user analytics endpoint"""
     favorite_location: Optional[str] = None  # locationid UUID
@@ -74,7 +79,7 @@ class UserAnalyticsResponse(BaseModel):
     total_study_time: int  # Total minutes
     average_rating: float  # Average rating
     streak: int  # Consecutive days with sessions
-    study_buddies: List[str]  # Top 3 buddy UUIDs
+    study_buddies: List[StudyBuddy]  # Top 3 buddies with session counts
 
 class CrowdednessBin(BaseModel):
     """Model for a single crowdedness time bin"""

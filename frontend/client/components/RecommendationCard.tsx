@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { apiClient } from "@/lib/api";
 import { LocationDetailsResponse } from "../../shared/api";
 
@@ -9,6 +9,8 @@ interface RecommendationCardProps {
   description: string;
   textColor: string;
   imageUrl?: string;
+  isExpanded?: boolean;
+  onExpand?: (locationId: string) => void;
 }
 
 interface BusynessHistogramProps {
@@ -73,7 +75,7 @@ function BusynessHistogram({ crowdednessData, textColor, showExpandedContent = t
           
           return (
             <div key={index} className="flex flex-col items-center space-y-1 flex-1">
-              <div className="relative w-full h-16 bg-white/10 rounded-sm overflow-hidden">
+              <div className="relative w-full h-12 bg-white/10 rounded-sm overflow-hidden">
                 <div 
                   className={`absolute bottom-0 w-full rounded-sm transition-all duration-500 ${
                     isCurrentTime ? 'bg-yellow-400' : 'bg-white/60'
@@ -87,7 +89,7 @@ function BusynessHistogram({ crowdednessData, textColor, showExpandedContent = t
                   }}
                 />
               </div>
-              <div className={`text-[10px] ${textColor} opacity-70 text-center leading-tight transition-all duration-300 ${
+              <div className={`text-[9px] ${textColor} opacity-70 text-center leading-tight transition-all duration-300 ${
                 showExpandedContent ? 'opacity-70 translate-y-0' : 'opacity-0 translate-y-2'
               }`} style={{ transitionDelay: `${500 + index * 100}ms` }}>
                 {bin.binname.split('-')[0]}
@@ -107,12 +109,25 @@ export function RecommendationCard({
   description,
   textColor,
   imageUrl,
+  isExpanded = false,
+  onExpand,
 }: RecommendationCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
   const [locationDetails, setLocationDetails] = useState<LocationDetailsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showExpandedContent, setShowExpandedContent] = useState(false);
+
+  // Handle showExpandedContent when isExpanded changes
+  useEffect(() => {
+    if (isExpanded) {
+      // Wait for card to stretch before showing content
+      setTimeout(() => {
+        setShowExpandedContent(true);
+      }, 300);
+    } else {
+      setShowExpandedContent(false);
+    }
+  }, [isExpanded]);
 
   const fetchLocationDetails = async () => {
     setIsLoading(true);
@@ -138,62 +153,28 @@ export function RecommendationCard({
     }
   };
 
-  const handleRefresh = async (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card click
-    e.preventDefault(); // Prevent any default behavior
-    console.log('🔄 Refreshing location data for:', locationId);
-    await fetchLocationDetails();
-  };
-
   const handleCardClick = async (e: React.MouseEvent) => {
-    // Don't close if clicking on interactive elements
-    if (isExpanded && (e.target as HTMLElement).closest('button')) {
-      return;
-    }
-
     if (isExpanded) {
-      setShowExpandedContent(false);
       // Wait for content to fade out before collapsing
       setTimeout(() => {
-        setIsExpanded(false);
+        onExpand?.('');
       }, 200);
       return;
     }
 
-    if (locationDetails) {
-      setIsExpanded(true);
-      // Wait for card to stretch before showing content
-      setTimeout(() => {
-        setShowExpandedContent(true);
-      }, 300);
-      return;
-    }
-
+    // Always refresh data when opening the card
+    console.log('🔄 Refreshing location data for:', locationId);
     await fetchLocationDetails();
-    setIsExpanded(true);
-    // Wait for card to stretch before showing content
-    setTimeout(() => {
-      setShowExpandedContent(true);
-    }, 300);
+    onExpand?.(locationId);
   };
 
   return (
-    <div className={`flex-1 flex flex-col transition-all duration-500 ease-in-out ${
-      isExpanded ? 'z-50 fixed inset-0 flex items-center justify-center p-4' : 'relative'
-    }`}>
-      {/* Backdrop for expanded view */}
-      {isExpanded && (
-        <div 
-          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-          onClick={() => setIsExpanded(false)}
-        />
-      )}
-      
+    <div className="flex-1 flex flex-col transition-all duration-500 ease-in-out relative">
       {/* Card with image as background */}
       <div 
-        className={`relative overflow-hidden border border-white/20 rounded-2xl flex-1 flex flex-col justify-between transition-all duration-700 ease-out cursor-pointer ${
+        className={`relative overflow-hidden border border-white/20 rounded-2xl flex flex-col justify-between transition-all duration-700 ease-out cursor-pointer ${
           isExpanded 
-            ? 'w-full max-w-2xl h-auto max-h-[90vh] p-8 shadow-2xl' 
+            ? 'h-[250%] p-6 shadow-xl' 
             : 'p-5'
         }`}
         onClick={handleCardClick}
@@ -201,8 +182,8 @@ export function RecommendationCard({
         {/* Background image with different opacity based on state */}
         {imageUrl && (
           <div 
-            className={`absolute inset-0 bg-cover bg-center transition-opacity duration-500 ${
-              isExpanded ? 'opacity-40' : 'opacity-20'
+            className={`absolute inset-0 bg-cover bg-center transition-all duration-500 ${
+              isExpanded ? 'opacity-20' : 'opacity-25'
             }`}
             style={{ backgroundImage: `url(${imageUrl})` }}
           />
@@ -214,67 +195,44 @@ export function RecommendationCard({
         }`} />
         
         {/* Content layer */}
-        <div className="relative z-10 flex flex-col justify-center h-full">
+        <div className="relative z-10 flex flex-col h-full">
           {isExpanded && locationDetails ? (
             // Expanded view with fade-in animation
-            <div className={`space-y-6 transition-all duration-500 ease-out ${
+            <div className={`space-y-4 transition-all duration-500 ease-out ${
               showExpandedContent 
                 ? 'opacity-100 translate-y-0' 
                 : 'opacity-0 translate-y-4'
             }`}>
               <div className="text-center relative">
-                <button
-                  onClick={handleRefresh}
-                  disabled={isLoading}
-                  className={`absolute top-0 right-0 p-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
-                    showExpandedContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
-                  }`}
-                  style={{ transitionDelay: '100ms' }}
-                  title="Refresh data"
-                >
-                  <svg 
-                    className={`w-4 h-4 ${textColor} transition-transform duration-300 ${isLoading ? 'animate-spin' : ''}`} 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth={2} 
-                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
-                    />
-                  </svg>
-                </button>
-                <h3 className={`text-3xl font-bold ${textColor} mb-2 transition-all duration-500 delay-100 ${
+                <h3 className={`text-2xl font-bold ${textColor} mb-2 transition-all duration-500 delay-100 ${
                   showExpandedContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
                 }`}>
                   {locationDetails.name}
                 </h3>
-                <div className={`text-lg font-semibold ${textColor} opacity-90 transition-all duration-500 delay-150 ${
+                <div className={`text-base font-semibold ${textColor} opacity-90 transition-all duration-500 delay-150 ${
                   showExpandedContent ? 'opacity-90 translate-y-0' : 'opacity-0 translate-y-2'
                 }`}>
                   📍 {address}
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
-                <div className={`bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-4 transition-all duration-500 delay-200 ${
+              <div className="grid grid-cols-2 gap-3">
+                <div className={`bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg p-3 transition-all duration-500 delay-200 ${
                   showExpandedContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
                 }`}>
-                  <div className={`text-sm font-bold ${textColor} mb-2`}>
+                  <div className={`text-xs font-bold ${textColor} mb-1`}>
                     Productivity Rating
                   </div>
                   {locationDetails.average_rating > 0 ? (
                     <>
-                      <div className={`text-2xl font-bold ${textColor}`}>
+                      <div className={`text-lg font-bold ${textColor}`}>
                         {locationDetails.average_rating.toFixed(1)}/5
                       </div>
                       <div className="flex space-x-1 mt-1">
                         {[...Array(5)].map((_, i) => (
                           <div
                             key={i}
-                            className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                            className={`w-2 h-2 rounded-full transition-all duration-300 ${
                               i < Math.round(locationDetails.average_rating)
                                 ? 'bg-yellow-400'
                                 : 'bg-white/20'
@@ -289,28 +247,28 @@ export function RecommendationCard({
                       </div>
                     </>
                   ) : (
-                    <div className={`text-sm ${textColor} opacity-70`}>
+                    <div className={`text-xs ${textColor} opacity-70`}>
                       No data yet
                     </div>
                   )}
                 </div>
                 
-                <div className={`bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-4 transition-all duration-500 delay-250 ${
+                <div className={`bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg p-3 transition-all duration-500 delay-250 ${
                   showExpandedContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
                 }`}>
-                  <div className={`text-sm font-bold ${textColor} mb-2`}>
+                  <div className={`text-xs font-bold ${textColor} mb-1`}>
                     Cleanliness Rating
                   </div>
                   {locationDetails.average_cleanliness > 0 ? (
                     <>
-                      <div className={`text-2xl font-bold ${textColor}`}>
+                      <div className={`text-lg font-bold ${textColor}`}>
                         {locationDetails.average_cleanliness.toFixed(1)}/5
                       </div>
                       <div className="flex space-x-1 mt-1">
                         {[...Array(5)].map((_, i) => (
                           <div
                             key={i}
-                            className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                            className={`w-2 h-2 rounded-full transition-all duration-300 ${
                               i < Math.round(locationDetails.average_cleanliness)
                                 ? 'bg-green-400'
                                 : 'bg-white/20'
@@ -325,14 +283,14 @@ export function RecommendationCard({
                       </div>
                     </>
                   ) : (
-                    <div className={`text-sm ${textColor} opacity-70`}>
+                    <div className={`text-xs ${textColor} opacity-70`}>
                       No data yet
                     </div>
                   )}
                 </div>
               </div>
               
-              <div className={`bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-4 transition-all duration-500 delay-300 ${
+              <div className={`bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg p-3 transition-all duration-500 delay-300 ${
                 showExpandedContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
               }`}>
                 <BusynessHistogram 
@@ -342,10 +300,10 @@ export function RecommendationCard({
                 />
               </div>
               
-              <div className={`text-sm ${textColor} opacity-80 text-center transition-all duration-500 delay-400 ${
+              <div className={`text-xs ${textColor} opacity-80 text-center transition-all duration-500 delay-400 ${
                 showExpandedContent ? 'opacity-80 translate-y-0' : 'opacity-0 translate-y-2'
               }`}>
-                Click anywhere to close
+                Click to collapse
               </div>
             </div>
           ) : (
@@ -364,11 +322,6 @@ export function RecommendationCard({
                 {description}
               </div>
               
-              {isLoading && (
-                <div className={`text-xs ${textColor} opacity-70 mt-2`}>
-                  Loading details...
-                </div>
-              )}
               
               {error && (
                 <div className={`text-xs text-red-300 mt-2`}>

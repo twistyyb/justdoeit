@@ -324,6 +324,7 @@ async def get_user_analytics(user_id: UUID):
             location_counts[locationid] = location_counts.get(locationid, 0) + 1
     
     favorite_location = max(location_counts, key=location_counts.get) if location_counts else None
+    logger.info(f"📍 Favorite location: {favorite_location} (from {location_counts})")
     
     # Step 2.5: Calculate most productive location (highest average rating per location)
     location_ratings = {}  # {location_id: [ratings]}
@@ -348,6 +349,8 @@ async def get_user_analytics(user_id: UUID):
                 most_productive_avg_rating = avg_rating
                 most_productive_location_id = location_id
     
+    logger.info(f"🏆 Most productive location: {most_productive_location_id} (avg rating: {most_productive_avg_rating})")
+    
     # Get location name and shortloc for most productive location
     most_productive_location_name = None
     most_productive_location_shortloc = None
@@ -362,10 +365,12 @@ async def get_user_analytics(user_id: UUID):
     
     # Step 3: Calculate total study time (sum of durations)
     total_study_time = sum(s.get('duration', 0) or 0 for s in user_sessions)
+    logger.info(f"⏱️ Total study time: {total_study_time} minutes")
     
     # Step 4: Calculate average rating
     ratings = [s.get('rating') for s in user_sessions if s.get('rating') is not None]
     average_rating = sum(ratings) / len(ratings) if ratings else 0.0
+    logger.info(f"⭐ Average rating: {average_rating} (from {len(ratings)} sessions with ratings)")
     
     # Step 5: Calculate streak
     # Extract unique dates from sessions (converted to Pacific time)
@@ -425,9 +430,9 @@ async def get_user_analytics(user_id: UUID):
             # Most recent is 2+ days ago - streak broken
             streak = 0
         
-        logger.info(f"Streak calculation (Pacific): most_recent={most_recent_date}, today={today_pacific}, streak={streak}, sorted_dates={sorted_dates}")
+        logger.info(f"🔥 Streak calculation (Pacific): most_recent={most_recent_date}, today={today_pacific}, streak={streak}, sorted_dates={sorted_dates}")
     
-    # Step 6: Calculate study buddies (top 3)
+    # Step 6: Calculate study buddies (top 3) with session counts
     all_buddies = []
     for session in user_sessions:
         creators = session.get('creators', [])
@@ -436,9 +441,13 @@ async def get_user_analytics(user_id: UUID):
                 if creator_id != user_id_str:  # Exclude self
                     all_buddies.append(creator_id)
     
-    # Count occurrences and get top 3
+    # Count occurrences and get top 3 with counts
     buddy_counts = Counter(all_buddies)
-    top_3_buddies = [buddy_id for buddy_id, _ in buddy_counts.most_common(3)]
+    top_3_buddies_with_counts = [
+        {"user_id": buddy_id, "session_count": count} 
+        for buddy_id, count in buddy_counts.most_common(3)
+    ]
+    logger.info(f"👥 Study buddies: {top_3_buddies_with_counts} (from {buddy_counts})")
     
     # Build most productive location object
     most_productive_location_obj = None
@@ -451,14 +460,25 @@ async def get_user_analytics(user_id: UUID):
             average_rating=round(most_productive_avg_rating, 2)
         )
     
-    return UserAnalyticsResponse(
+    # Build final response
+    response_data = UserAnalyticsResponse(
         favorite_location=favorite_location,
         most_productive_location=most_productive_location_obj,
         total_study_time=total_study_time,
         average_rating=round(average_rating, 2),
         streak=streak,
-        study_buddies=top_3_buddies
+        study_buddies=top_3_buddies_with_counts
     )
+    
+    logger.info(f"✅ Final analytics response for user {user_id_str}:")
+    logger.info(f"   - Favorite location: {favorite_location}")
+    logger.info(f"   - Most productive location: {most_productive_location_obj}")
+    logger.info(f"   - Total study time: {total_study_time} minutes")
+    logger.info(f"   - Average rating: {round(average_rating, 2)}")
+    logger.info(f"   - Streak: {streak} days")
+    logger.info(f"   - Study buddies: {top_3_buddies_with_counts}")
+    
+    return response_data
 
 
 @app.get("/user_sessions_time/{user_id}", response_model=UserSessionsTimeResponse)

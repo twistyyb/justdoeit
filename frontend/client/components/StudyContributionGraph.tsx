@@ -9,6 +9,10 @@ interface StudyContributionGraphProps {
 interface DayData {
   duration: number;
   lastInputTime: Date;
+  sessions: Array<{
+    duration: number;
+    inputTime: Date;
+  }>;
 }
 
 export function StudyContributionGraph({ textColor }: StudyContributionGraphProps) {
@@ -35,7 +39,7 @@ export function StudyContributionGraph({ textColor }: StudyContributionGraphProp
         
         const data: UserSessionsTimeResponse = await response.json();
         
-        // Process the sessions data into a map of date -> {duration, lastInputTime}
+        // Process the sessions data into a map of date -> {duration, lastInputTime, sessions}
         const dateMap = new Map<string, DayData>();
         let max = 0;
         
@@ -63,16 +67,25 @@ export function StudyContributionGraph({ textColor }: StudyContributionGraphProp
               const newInputTime = utcDate;
               const shouldUpdate = !currentData || newInputTime >= currentData.lastInputTime;
               
+              // Add session to the sessions array
+              const sessions = currentData?.sessions || [];
+              sessions.push({
+                duration: session.duration,
+                inputTime: utcDate
+              });
+              
               if (shouldUpdate) {
                 dateMap.set(date, {
                   duration: newDuration,
-                  lastInputTime: newInputTime
+                  lastInputTime: newInputTime,
+                  sessions: sessions
                 });
               } else {
-                // Just update duration, keep old inputtime
+                // Just update duration and sessions, keep old inputtime
                 dateMap.set(date, {
                   duration: newDuration,
-                  lastInputTime: currentData.lastInputTime
+                  lastInputTime: currentData.lastInputTime,
+                  sessions: sessions
                 });
               }
               
@@ -142,63 +155,129 @@ export function StudyContributionGraph({ textColor }: StudyContributionGraphProp
     return weeks;
   };
 
-  // Get color based on time of day (matching the gradient colors)
+  // Get color based on simplified time periods
   const getTimeBasedColor = (dateTime: Date): string => {
     // Convert to Pacific timezone
     const pacificTime = new Date(dateTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
     const hour = pacificTime.getHours();
-    const minute = pacificTime.getMinutes();
-    const totalMinutes = hour * 60 + minute;
 
-    // Late Night (12am-4am) - Deep cosmic blues
-    if (totalMinutes >= 0 && totalMinutes < 240) {
-      return "#302b63"; // Mid-tone from late night gradient
+    // Morning (6am-12pm)
+    if (hour >= 6 && hour < 12) {
+      return "#ffd662"; // Bright yellow
     }
-    // Pre-Dawn (4am-6am) - Deep blue to purple
-    else if (totalMinutes >= 240 && totalMinutes < 360) {
-      return "#5a3d7f"; // Mid-tone from pre-dawn gradient
+    // Afternoon (12pm-6pm)
+    else if (hour >= 12 && hour < 18) {
+      return "#ffa45f"; // Orange
     }
-    // Dawn (6am-8am) - Orange, pink, gold
-    else if (totalMinutes >= 360 && totalMinutes < 480) {
-      return "#e67350"; // Mid-tone from dawn gradient
+    // Evening (6pm-12am)
+    else if (hour >= 18 && hour < 24) {
+      return "#8e44ad"; // Purple
     }
-    // Morning (8am-11am) - Bright yellows
-    else if (totalMinutes >= 480 && totalMinutes < 660) {
-      return "#ffd662"; // Mid-tone from morning gradient
-    }
-    // Midday (11am-3pm) - Sky blue to golden
-    else if (totalMinutes >= 660 && totalMinutes < 900) {
-      return "#a8e0fa"; // Mid-tone from midday gradient
-    }
-    // Afternoon (3pm-5pm) - Warm golden
-    else if (totalMinutes >= 900 && totalMinutes < 1020) {
-      return "#ffd98e"; // Mid-tone from afternoon gradient
-    }
-    // Sunset (5pm-7pm) - Dramatic oranges and pinks
-    else if (totalMinutes >= 1020 && totalMinutes < 1140) {
-      return "#ffa45f"; // Mid-tone from sunset gradient
-    }
-    // Dusk (7pm-9pm) - Purple, deep blue
-    else if (totalMinutes >= 1140 && totalMinutes < 1260) {
-      return "#8e44ad"; // Mid-tone from dusk gradient
-    }
-    // Night (9pm-12am) - Deep blues, navy
+    // Night (12am-6am)
     else {
-      return "#243b55"; // Mid-tone from night gradient
+      return "#243b55"; // Deep blue
     }
   };
 
+  // Generate gradient background for multicolored boxes
+  const generateGradientBackground = (sessions: Array<{ duration: number; inputTime: Date }>): string => {
+    if (sessions.length === 1) {
+      return getTimeBasedColor(sessions[0].inputTime);
+    }
+    
+    // Group sessions by time period
+    const timePeriods = {
+      morning: sessions.filter(s => {
+        const hour = new Date(s.inputTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })).getHours();
+        return hour >= 6 && hour < 12;
+      }),
+      afternoon: sessions.filter(s => {
+        const hour = new Date(s.inputTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })).getHours();
+        return hour >= 12 && hour < 18;
+      }),
+      evening: sessions.filter(s => {
+        const hour = new Date(s.inputTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })).getHours();
+        return hour >= 18 && hour < 24;
+      }),
+      night: sessions.filter(s => {
+        const hour = new Date(s.inputTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })).getHours();
+        return hour >= 0 && hour < 6;
+      })
+    };
+    
+    const activePeriods = Object.entries(timePeriods).filter(([_, sessions]) => sessions.length > 0);
+    
+    if (activePeriods.length === 1) {
+      return getTimeBasedColor(activePeriods[0][1][0].inputTime);
+    }
+    
+    // Create smooth gradient for multiple periods
+    const colors = activePeriods.map(([period, _]) => {
+      switch (period) {
+        case 'morning': return '#ffd662';
+        case 'afternoon': return '#ffa45f';
+        case 'evening': return '#8e44ad';
+        case 'night': return '#243b55';
+        default: return '#ffd662';
+      }
+    });
+    
+    const totalDayDuration = activePeriods.reduce((sum, [_, sessions]) => 
+      sum + sessions.reduce((sessionSum, s) => sessionSum + s.duration, 0), 0
+    );
+    
+    const percentages = activePeriods.map(([_, sessions]) => {
+      const periodDuration = sessions.reduce((sum, s) => sum + s.duration, 0);
+      return (periodDuration / totalDayDuration) * 100;
+    });
+    
+    // Create smoother gradient with better transitions
+    let gradient = 'linear-gradient(135deg, ';
+    const gradientStops = [];
+    
+    let currentPercent = 0;
+    for (let i = 0; i < colors.length; i++) {
+      const startPercent = currentPercent;
+      const endPercent = currentPercent + percentages[i];
+      
+      // Add smooth transitions between colors
+      if (i === 0) {
+        gradientStops.push(`${colors[i]} ${startPercent}%`);
+      } else {
+        // Add a small transition zone for smoother blending
+        const transitionStart = Math.max(0, startPercent - 2);
+        gradientStops.push(`${colors[i]} ${transitionStart}%`);
+      }
+      
+      if (i === colors.length - 1) {
+        gradientStops.push(`${colors[i]} ${endPercent}%`);
+      } else {
+        // Add a small transition zone for smoother blending
+        const transitionEnd = Math.min(100, endPercent + 2);
+        gradientStops.push(`${colors[i]} ${transitionEnd}%`);
+      }
+      
+      currentPercent = endPercent;
+    }
+    
+    gradient += gradientStops.join(', ') + ')';
+    
+    return gradient;
+  };
+
   // Get the color and check if date has data
-  const getDayColor = (date: Date): { color: string; hasData: boolean } => {
+  const getDayColor = (date: Date): { color: string; hasData: boolean; isGradient: boolean } => {
     const dateStr = formatDateKey(date);
     const dayData = studyData.get(dateStr);
     
     if (!dayData) {
-      return { color: "bg-white/5", hasData: false };
+      return { color: "bg-white/5", hasData: false, isGradient: false };
     }
     
-    const timeColor = getTimeBasedColor(dayData.lastInputTime);
-    return { color: timeColor, hasData: true };
+    const background = generateGradientBackground(dayData.sessions);
+    const isGradient = dayData.sessions.length > 1 && background.includes('linear-gradient');
+    
+    return { color: background, hasData: true, isGradient };
   };
 
   const weeks = generateCalendarData();
@@ -216,7 +295,7 @@ export function StudyContributionGraph({ textColor }: StudyContributionGraphProp
   if (isLoading) {
     return (
       <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-2xl p-4">
-        <div className={`text-sm font-bold ${textColor} mb-2`}>Study Time Density</div>
+        <div className={`text-sm font-bold ${textColor} mb-2`}>Study Contributions</div>
         <div className={`text-xs ${textColor} opacity-80 text-center py-8`}>
           Loading study data...
         </div>
@@ -226,31 +305,33 @@ export function StudyContributionGraph({ textColor }: StudyContributionGraphProp
 
   return (
     <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-2xl p-4">
-      <div className={`text-sm font-bold ${textColor} mb-2`}>Study Time Density</div>
-      <div className={`text-xs ${textColor} opacity-80 mb-3`}>
-        {totalHours > 0 ? (
-          <>
-            {totalHours} hours • {studyData.size} days active
-            <div className="text-[10px] opacity-70 mt-1">
-              {firstDate} to {lastDate}
-            </div>
-          </>
-        ) : (
-          "No study sessions yet"
-        )}
+      <div className="flex items-center justify-between mb-3">
+        <div className={`text-base font-bold ${textColor}`}>Study Contributions</div>
+        <div className={`text-sm ${textColor} opacity-80`}>
+          {totalHours > 0 ? (
+            `${totalHours} hours • ${studyData.size} sessions`
+          ) : (
+            "No study sessions yet"
+          )}
+        </div>
       </div>
       
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" ref={(el) => {
+        if (el) {
+          // Scroll to the right on mount
+          el.scrollLeft = el.scrollWidth;
+        }
+      }}>
         <div className="inline-block min-w-full">
           {/* Month labels */}
-          <div className="flex mb-1 ml-8">
+          <div className="flex mb-1 ml-10 mr-10">
             {weeks.map((week, weekIdx) => {
               const firstDay = week[0];
               const isFirstWeekOfMonth = firstDay.getDate() <= 7;
               return (
-                <div key={weekIdx} className="flex-shrink-0" style={{ width: '10px', marginRight: '2px' }}>
+                <div key={weekIdx} className="flex-shrink-0" style={{ width: '12px', marginRight: '3px' }}>
                   {isFirstWeekOfMonth && (
-                    <span className={`text-[8px] ${textColor} opacity-60`}>
+                    <span className={`text-[10px] ${textColor} opacity-60`}>
                       {monthLabels[firstDay.getMonth()]}
                     </span>
                   )}
@@ -260,84 +341,78 @@ export function StudyContributionGraph({ textColor }: StudyContributionGraphProp
           </div>
           
           <div className="flex">
-            {/* Day labels */}
-            <div className="flex flex-col mr-2">
-              {dayLabels.map((label, idx) => (
-                <div key={idx} className="h-[10px] mb-[2px] flex items-center">
-                  {idx % 2 === 1 && (
-                    <span className={`text-[8px] ${textColor} opacity-60 w-6`}>{label}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-            
             {/* Contribution grid */}
-            <div className="flex gap-[2px]">
+            <div className="flex gap-[3px]">
               {weeks.map((week, weekIdx) => (
-                <div key={weekIdx} className="flex flex-col gap-[2px]">
+                <div key={weekIdx} className="flex flex-col gap-[3px]">
                   {week.map((date, dayIdx) => {
                     const dateStr = formatDateKey(date);
                     const dayData = studyData.get(dateStr);
-                    const { color, hasData } = getDayColor(date);
+                    const { color, hasData, isGradient } = getDayColor(date);
                     const duration = dayData?.duration || 0;
                     const hours = Math.round(duration / 60);
                     
-                    // Get time of day name for tooltip
-                    let timeOfDay = "No data";
+                    // Get time periods for tooltip
+                    let timePeriods = "No data";
                     if (dayData) {
-                      const pacificTime = new Date(dayData.lastInputTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-                      const hour = pacificTime.getHours();
-                      const totalMinutes = hour * 60 + pacificTime.getMinutes();
-                      
-                      if (totalMinutes >= 0 && totalMinutes < 240) timeOfDay = "Late Night";
-                      else if (totalMinutes >= 240 && totalMinutes < 360) timeOfDay = "Pre-Dawn";
-                      else if (totalMinutes >= 360 && totalMinutes < 480) timeOfDay = "Dawn";
-                      else if (totalMinutes >= 480 && totalMinutes < 660) timeOfDay = "Morning";
-                      else if (totalMinutes >= 660 && totalMinutes < 900) timeOfDay = "Midday";
-                      else if (totalMinutes >= 900 && totalMinutes < 1020) timeOfDay = "Afternoon";
-                      else if (totalMinutes >= 1020 && totalMinutes < 1140) timeOfDay = "Sunset";
-                      else if (totalMinutes >= 1140 && totalMinutes < 1260) timeOfDay = "Dusk";
-                      else timeOfDay = "Night";
+                      const periods = new Set();
+                      dayData.sessions.forEach(session => {
+                        const hour = new Date(session.inputTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })).getHours();
+                        if (hour >= 6 && hour < 12) periods.add("Morning");
+                        else if (hour >= 12 && hour < 18) periods.add("Afternoon");
+                        else if (hour >= 18 && hour < 24) periods.add("Evening");
+                        else periods.add("Night");
+                      });
+                      timePeriods = Array.from(periods).join(", ");
                     }
                     
                     return (
                       <div
                         key={dayIdx}
-                        className={`w-[10px] h-[10px] rounded-[2px] border border-white/10 transition-all hover:scale-125 hover:border-white/30 cursor-pointer ${!hasData ? 'bg-white/5' : ''}`}
-                        style={{ backgroundColor: hasData ? color : undefined }}
-                        title={hasData ? `${dateStr}: ${hours}h study time\nLast session: ${timeOfDay}` : `${dateStr}: No sessions`}
+                        className={`w-[12px] h-[12px] rounded-[3px] border border-white/10 transition-all hover:scale-125 hover:border-white/30 cursor-pointer ${!hasData ? 'bg-white/5' : ''}`}
+                        style={{ 
+                          backgroundColor: hasData && !isGradient ? color : undefined,
+                          background: hasData && isGradient ? color : undefined
+                        }}
+                        title={hasData ? `${dateStr}: ${hours}h study time\nTime periods: ${timePeriods}` : `${dateStr}: No sessions`}
                       />
                     );
                   })}
                 </div>
               ))}
             </div>
-          </div>
-          
-          {/* Legend - Time of Day Colors */}
-          <div className="mt-3">
-            <div className={`text-[9px] ${textColor} opacity-60 mb-1.5 text-center`}>Study Time Colors</div>
-            <div className="grid grid-cols-3 gap-x-2 gap-y-1">
-              {[
-                { name: "Night", color: "#302b63" },
-                { name: "Dawn", color: "#e67350" },
-                { name: "Morning", color: "#ffd662" },
-                { name: "Midday", color: "#a8e0fa" },
-                { name: "Afternoon", color: "#ffd98e" },
-                { name: "Sunset", color: "#ffa45f" },
-                { name: "Dusk", color: "#8e44ad" },
-                { name: "Late Night", color: "#243b55" },
-              ].map(({ name, color }) => (
-                <div key={name} className="flex items-center gap-1">
-                  <div
-                    className="w-[10px] h-[10px] rounded-[2px] border border-white/10 flex-shrink-0"
-                    style={{ backgroundColor: color }}
-                  />
-                  <span className={`text-[8px] ${textColor} opacity-60 whitespace-nowrap`}>{name}</span>
+            
+            {/* Day labels - moved to the right */}
+            <div className="flex flex-col ml-3">
+              {dayLabels.map((label, idx) => (
+                <div key={idx} className="h-[12px] mb-[3px] flex items-center justify-start">
+                  {idx % 2 === 1 && (
+                    <span className={`text-[10px] ${textColor} opacity-60 w-7 text-left`}>{label}</span>
+                  )}
                 </div>
               ))}
             </div>
           </div>
+        </div>
+      </div>
+      
+      {/* Legend - Time of Day Colors (outside scrollable area) */}
+      <div className="mt-4">
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
+          {[
+            { name: "Morning", color: "#ffd662" },
+            { name: "Afternoon", color: "#ffa45f" },
+            { name: "Evening", color: "#8e44ad" },
+            { name: "Night", color: "#243b55" },
+          ].map(({ name, color }) => (
+            <div key={name} className="flex items-center gap-1.5">
+              <div
+                className="w-[10px] h-[10px] rounded-[2px] border border-white/10 flex-shrink-0"
+                style={{ backgroundColor: color }}
+              />
+              <span className={`text-[9px] ${textColor} opacity-60 whitespace-nowrap`}>{name}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
