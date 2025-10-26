@@ -11,6 +11,7 @@ import pytz
 from collections import Counter
 from startSupa import get_supabase
 from models import UserProfileCreate, UserProfileResponse, UserProfileGetResponse
+# from claude import create_claude_message_with_context, create_structured_context, get_study_recommendation_with_full_context
 
 
 supabase = get_supabase()
@@ -156,7 +157,46 @@ async def get_users():
     
     return UsersListResponse(users=users)
 
-
+@app.get("/all_location_info")
+async def get_all_location_info():
+    """Get all location info with detailed information for each location"""
+    # Get all locations from the database
+    response = supabase.table("locations").select("*").execute()
+    locations = response.data
+    
+    # Create a dictionary mapping UUID to location details
+    location_details_map = {}
+    
+    # For each location, call the location_details logic
+    for location in locations:
+        location_id = location['id']
+        
+        try:
+            # Convert to UUID for the location_details function
+            from uuid import UUID
+            location_uuid = UUID(location_id)
+            
+            # Call the location_details endpoint logic
+            location_details = await get_location_details(location_uuid)
+            
+            # Add to the mapping
+            location_details_map[location_id] = location_details.model_dump()
+            
+        except Exception as e:
+            logger.error(f"Error getting details for location {location_id}: {e}")
+            # If there's an error, still include the basic location info
+            location_details_map[location_id] = {
+                "name": location.get('name', ''),
+                "summary": location.get('summary', ''),
+                "coordinate_x": location.get('coordinate_x', 0.0),
+                "coordinate_y": location.get('coordinate_y', 0.0),
+                "average_rating": 0.0,
+                "average_cleanliness": 0.0,
+                "crowdedness_vs_time": {},
+                "error": str(e)
+            }
+    
+    return location_details_map
 
 @app.get("/location_details/{location_id}", response_model=LocationDetailsResponse)
 async def get_location_details(location_id: UUID):
@@ -253,12 +293,12 @@ async def get_location_details(location_id: UUID):
     # Step 8: Return combined response
     return LocationDetailsResponse(
         name=location['name'],
+        summary=location.get('summary', ''),
         coordinate_x=location.get('coordinate_x', 0.0),
         coordinate_y=location.get('coordinate_y', 0.0),
         average_rating=round(avg_rating, 2),
         average_cleanliness=round(avg_cleanliness, 2),
         crowdedness_vs_time=crowdedness_data
-        
     )
 
 
@@ -636,6 +676,152 @@ async def get_user_recent_sessions(user_id: UUID, limit: int = 10):
         ))
     
     return UserRecentSessionsResponse(sessions=session_details)
+
+
+@app.get("/user_sessions_aggregate/{user_id}")
+async def get_user_sessions_aggregate(user_id: UUID):
+    """
+    Get comprehensive aggregation of all user session information in a single JSON response.
+    This includes:
+    - All session details with location names
+    - User analytics (favorite location, total study time, etc.)
+    - Session time/duration data
+    - Summary statistics
+    """
+    user_id_str = str(user_id)
+    
+    # Step 1: Check if user exists
+    try:
+        profile_response = supabase.table("user_profiles").select("id", "name").eq("id", user_id_str).execute()
+        if not profile_response.data:
+            raise HTTPException(status_code=404, detail="User not found")
+        user_profile = profile_response.data[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning(f"Error checking user profile: {e}")
+        user_profile = {"id": user_id_str, "name": "Unknown User"}
+    
+    # Step 2: Get all user sessions (reuse logic from user_analytics)
+    try:
+        sessions_response = supabase.table("sessions")\
+            .select("*")\
+            .contains("creators", [user_id_str])\
+            .execute()
+        user_sessions = sessions_response.data
+        logger.info(f"Found {len(user_sessions)} sessions for user {user_id_str}")
+    except Exception as e:
+        logger.warning(f"Array filter failed: {e}, falling back to Python filtering")
+        sessions_response = supabase.table("sessions").select("*").execute()
+        user_sessions = []
+        for session in sessions_response.data:
+            creators = session.get('creators')
+            if creators:
+                creators_list = list(creators) if not isinstance(creators, list) else creators
+                creators_str = [str(c) for c in creators_list]
+                if user_id_str in creators_str:
+                    user_sessions.append(session)
+        logger.info(f"Found {len(user_sessions)} sessions for user {user_id_str} using Python filter")
+    
+    # Step 3: Get user analytics
+    try:
+        analytics = await get_user_analytics(user_id)
+        analytics_data = analytics.model_dump()
+    except Exception as e:
+        logger.error(f"Error getting user analytics: {e}")
+        analytics_data = {
+            "favorite_location": None,
+            "most_productive_location": None,
+            "total_study_time": 0,
+            "average_rating": 0.0,
+            "streak": 0,
+            "study_buddies": []
+        }
+    
+    # Step 4: Get session time/duration data
+    session_time_objects = []
+    for session in user_sessions:
+        inputtime = session.get('inputtime')
+        if inputtime and isinstance(inputtime, str):
+            try:
+                inputtime = datetime.fromisoformat(inputtime.replace('Z', '+00:00'))
+            except Exception as e:
+                logger.error(f"Error parsing inputtime: {e}")
+                inputtime = None
+        
+        session_time_objects.append({
+            "inputtime": inputtime.isoformat() if inputtime else None,
+            "duration": session.get('duration')
+        })
+    
+    # Step 5: Get detailed session information with location names
+    location_names = {}
+    location_ids = set(s.get('locationid') for s in user_sessions if s.get('locationid'))
+    
+    for location_id in location_ids:
+        try:
+            location_response = supabase.table("locations").select("id", "name", "shortloc").eq("id", location_id).execute()
+            if location_response.data:
+                location_names[location_id] = location_response.data[0]
+        except Exception as e:
+            logger.error(f"Error fetching location {location_id}: {e}")
+            location_names[location_id] = {"id": location_id, "name": "Unknown Location", "shortloc": "Unknown"}
+    
+    # Step 6: Build detailed session information
+    detailed_sessions = []
+    for session in user_sessions:
+        inputtime = session.get('inputtime')
+        if inputtime and isinstance(inputtime, str):
+            try:
+                inputtime = datetime.fromisoformat(inputtime.replace('Z', '+00:00'))
+            except Exception as e:
+                logger.error(f"Error parsing inputtime: {e}")
+                inputtime = None
+        
+        location_id = session.get('locationid', '')
+        location_info = location_names.get(location_id, {"name": "Unknown Location", "shortloc": "Unknown"})
+        
+        detailed_sessions.append({
+            "id": session.get('id', ''),
+            "locationid": location_id,
+            "location_name": location_info.get('name', 'Unknown Location'),
+            "location_shortloc": location_info.get('shortloc', 'Unknown'),
+            "inputtime": inputtime.isoformat() if inputtime else None,
+            "duration": session.get('duration'),
+            "rating": session.get('rating', 0),
+            "cleanliness": session.get('cleanliness', 0),
+            "comment": session.get('comment'),
+            "outletavailability": session.get('outletavailability'),
+            "creators": session.get('creators'),
+            "crowdedness": session.get('crowdedness'),
+            "created_at": session.get('created_at')
+        })
+    
+    # Step 7: Build comprehensive response (without location details)
+    aggregate_response = {
+        "user_profile": user_profile,
+        "session_count": len(user_sessions),
+        "analytics": analytics_data,
+        "session_time_data": session_time_objects,
+        "detailed_sessions": detailed_sessions,
+        "summary": {
+            "total_sessions": len(user_sessions),
+            "total_study_time_minutes": analytics_data.get("total_study_time", 0),
+            "average_rating": analytics_data.get("average_rating", 0.0),
+            "current_streak": analytics_data.get("streak", 0),
+            "unique_locations_visited": len(location_ids),
+            "favorite_location": analytics_data.get("favorite_location"),
+            "most_productive_location": analytics_data.get("most_productive_location"),
+            "study_buddies_count": len(analytics_data.get("study_buddies", []))
+        }
+    }
+    
+    logger.info(f"✅ Generated comprehensive session aggregate for user {user_id_str}")
+    logger.info(f"   - Sessions: {len(user_sessions)}")
+    logger.info(f"   - Unique locations: {len(location_ids)}")
+    logger.info(f"   - Total study time: {analytics_data.get('total_study_time', 0)} minutes")
+    
+    return aggregate_response
 
 
 if __name__ == "__main__":

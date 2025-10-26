@@ -84,3 +84,6 @@ dist-ssr
 
 .config/
 !.env
+
+backend/.env
+frontend/.env

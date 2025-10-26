@@ -89,6 +89,7 @@ class CrowdednessBin(BaseModel):
 class LocationDetailsResponse(BaseModel):
     """Model for location details endpoint"""
     name: str
+    summary: str
     coordinate_x: float
     coordinate_y: float
     average_rating: float
