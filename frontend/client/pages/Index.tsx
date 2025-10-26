@@ -40,6 +40,8 @@ export default function Index() {
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
   const [studyBuddyData, setStudyBuddyData] = useState<{name: string, sessionCount: number}[]>([]);
   const [favoriteLocationName, setFavoriteLocationName] = useState<string | null>(null);
+  const [mostProductiveLocationData, setMostProductiveLocationData] = useState<{image: string, name: string, shortloc: string} | null>(null);
+  const [mostVisitedLocationData, setMostVisitedLocationData] = useState<{image: string, name: string} | null>(null);
   const { user, userProfile } = useAuth();
   const { gradient, name, textColor } = useTimeBasedGradient();
   
@@ -104,22 +106,66 @@ export default function Index() {
           setStudyBuddyData(buddyData);
         }
 
-        // Fetch favorite location name
+        // Fetch most productive location image using location_id
+        if (data.most_productive_location?.location_id) {
+          try {
+            // Get all locations with images from location_names endpoint
+            const locationsResponse = await fetch(
+              `http://127.0.0.1:5002/location_names`
+            );
+            if (locationsResponse.ok) {
+              const locationsData = await locationsResponse.json();
+              const location = locationsData.locations.find(
+                (loc: any) => loc.id === data.most_productive_location?.location_id
+              );
+              if (location) {
+                setMostProductiveLocationData({
+                  image: location.image || '',
+                  name: data.most_productive_location.location_name || '',
+                  shortloc: data.most_productive_location.shortloc || ''
+                });
+              }
+            }
+          } catch (error) {
+            console.error(`Error fetching most productive location:`, error);
+          }
+        }
+
+        // Fetch favorite location image using favorite_location (which is location_id)
         if (data.favorite_location) {
           try {
+            // Get location details to get the name
             const locationResponse = await fetch(
               `http://127.0.0.1:5002/location_details/${data.favorite_location}`
             );
             if (locationResponse.ok) {
               const locationData = await locationResponse.json();
               setFavoriteLocationName(locationData.name);
+              
+              // Get all locations to find the image
+              const locationsResponse = await fetch(
+                `http://127.0.0.1:5002/location_names`
+              );
+              if (locationsResponse.ok) {
+                const locationsData = await locationsResponse.json();
+                const location = locationsData.locations.find(
+                  (loc: any) => loc.id === data.favorite_location
+                );
+                if (location && location.image) {
+                  setMostVisitedLocationData({
+                    image: location.image,
+                    name: locationData.name
+                  });
+                }
+              }
             }
           } catch (error) {
-            console.error(`Error fetching favorite location ${data.favorite_location}:`, error);
+            console.error(`Error fetching favorite location:`, error);
             setFavoriteLocationName(null);
           }
         } else {
           setFavoriteLocationName(null);
+          setMostVisitedLocationData(null);
         }
       } catch (error) {
         console.error("Error fetching user analytics:", error);
@@ -303,48 +349,109 @@ export default function Index() {
             <StudyContributionGraph textColor={textColor} />
 
             {/* Most Productive Location Statistic */}
-            <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-2xl p-4 mb-4">
-              <div className={`text-sm font-bold ${textColor} mb-2`}>
-                Most Productive Location
+            {mostProductiveLocationData?.image ? (
+              <div className="relative overflow-hidden border border-white/20 rounded-2xl mb-4" style={{ height: '120px' }}>
+                {/* Background image */}
+                <div 
+                  className="absolute inset-0 bg-cover bg-center opacity-20"
+                  style={{ backgroundImage: `url(${mostProductiveLocationData.image})` }}
+                />
+                
+                {/* Blur overlay */}
+                <div className="absolute inset-0 backdrop-blur-sm bg-gradient-to-b from-transparent to-black/40" />
+                
+                {/* Content */}
+                <div className="relative z-10 p-4 h-full flex flex-col justify-between">
+                  <div className={`text-xs font-bold ${textColor} opacity-90 uppercase tracking-wide`}>
+                    Most Productive Location
+                  </div>
+                  <div className="space-y-1">
+                    <div className={`font-bold ${textColor} text-lg`}>
+                      {mostProductiveLocationData.name}
+                    </div>
+                    <div className={`text-sm ${textColor} opacity-75 flex items-center gap-1`}>
+                      <span>📍</span> {mostProductiveLocationData.shortloc}
+                    </div>
+                    {userAnalytics?.most_productive_location && (
+                      <div className={`text-xs ${textColor} opacity-75`}>
+                        Avg Rating: {userAnalytics.most_productive_location.average_rating.toFixed(1)}/5
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-              {isLoadingAnalytics ? (
-                <div className={`text-xs ${textColor} opacity-90`}>Loading...</div>
-              ) : userAnalytics?.most_productive_location?.location_id ? (
-                <div className={`text-xs ${textColor} opacity-90`}>
-                  <div className="font-semibold">{userAnalytics.most_productive_location.location_name}</div>
-                  <div className="opacity-75">{userAnalytics.most_productive_location.shortloc}</div>
-                  <div className="opacity-75">Avg Rating: {userAnalytics.most_productive_location.average_rating.toFixed(1)}/5</div>
+            ) : (
+              <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-2xl p-4 mb-4">
+                <div className={`text-sm font-bold ${textColor} mb-2`}>
+                  Most Productive Location
                 </div>
-              ) : (
-                <div className={`text-xs ${textColor} opacity-80`}>
-                  Log some sessions to see your most productive spot!
-                </div>
-              )}
-            </div>
+                {isLoadingAnalytics ? (
+                  <div className={`text-xs ${textColor} opacity-90`}>Loading...</div>
+                ) : userAnalytics?.most_productive_location?.location_id ? (
+                  <div className={`text-xs ${textColor} opacity-90`}>
+                    <div className="font-semibold">{userAnalytics.most_productive_location.location_name}</div>
+                    <div className="opacity-75">{userAnalytics.most_productive_location.shortloc}</div>
+                    <div className="opacity-75">Avg Rating: {userAnalytics.most_productive_location.average_rating.toFixed(1)}/5</div>
+                  </div>
+                ) : (
+                  <div className={`text-xs ${textColor} opacity-80`}>
+                    Log some sessions to see your most productive spot!
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Most Frequently Visited Location Statistic */}
-            <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-2xl p-4 mb-4">
-              <div className={`text-sm font-bold ${textColor} mb-2`}>
-                Most Visited Location
+            {mostVisitedLocationData?.image ? (
+              <div className="relative overflow-hidden border border-white/20 rounded-2xl mb-4" style={{ height: '120px' }}>
+                {/* Background image */}
+                <div 
+                  className="absolute inset-0 bg-cover bg-center opacity-20"
+                  style={{ backgroundImage: `url(${mostVisitedLocationData.image})` }}
+                />
+                
+                {/* Blur overlay */}
+                <div className="absolute inset-0 backdrop-blur-sm bg-gradient-to-b from-transparent to-black/40" />
+                
+                {/* Content */}
+                <div className="relative z-10 p-4 h-full flex flex-col justify-between">
+                  <div className={`text-xs font-bold ${textColor} opacity-90 uppercase tracking-wide`}>
+                    Most Visited Location
+                  </div>
+                  <div className="space-y-1">
+                    <div className={`font-bold ${textColor} text-lg`}>
+                      {mostVisitedLocationData.name}
+                    </div>
+                    <div className={`text-sm ${textColor} opacity-75`}>
+                      Your go-to study spot
+                    </div>
+                  </div>
+                </div>
               </div>
-              {isLoadingAnalytics ? (
-                <div className={`text-xs ${textColor} opacity-90`}>Loading...</div>
-              ) : userAnalytics?.favorite_location && favoriteLocationName ? (
-                <div className={`text-xs ${textColor} opacity-90`}>
-                  <div className="font-semibold">{favoriteLocationName}</div>
-                  <div className="opacity-75">Your go-to study spot</div>
+            ) : (
+              <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-2xl p-4 mb-4">
+                <div className={`text-sm font-bold ${textColor} mb-2`}>
+                  Most Visited Location
                 </div>
-              ) : userAnalytics?.favorite_location ? (
-                <div className={`text-xs ${textColor} opacity-90`}>
-                  <div className="font-semibold">Loading location name...</div>
-                  <div className="opacity-75">Your go-to study spot</div>
-                </div>
-              ) : (
-                <div className={`text-xs ${textColor} opacity-80`}>
-                  Log some sessions to see your favorite spot!
-                </div>
-              )}
-            </div>
+                {isLoadingAnalytics ? (
+                  <div className={`text-xs ${textColor} opacity-90`}>Loading...</div>
+                ) : userAnalytics?.favorite_location && favoriteLocationName ? (
+                  <div className={`text-xs ${textColor} opacity-90`}>
+                    <div className="font-semibold">{favoriteLocationName}</div>
+                    <div className="opacity-75">Your go-to study spot</div>
+                  </div>
+                ) : userAnalytics?.favorite_location ? (
+                  <div className={`text-xs ${textColor} opacity-90`}>
+                    <div className="font-semibold">Loading location name...</div>
+                    <div className="opacity-75">Your go-to study spot</div>
+                  </div>
+                ) : (
+                  <div className={`text-xs ${textColor} opacity-80`}>
+                    Log some sessions to see your favorite spot!
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-2xl p-4">
               <div className={`text-sm font-bold ${textColor} mb-3`}>
