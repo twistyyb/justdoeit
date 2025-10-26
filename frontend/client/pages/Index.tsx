@@ -143,24 +143,17 @@ export default function Index() {
         {/* Overlay for depth */}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20 pointer-events-none"></div>
 
-      {/* Header with user profile */}
-      <div className="absolute bottom-4 left-4 z-20 flex justify-start">
-        {user ? (
+      {/* Header with user profile - only show when authenticated */}
+      {user && (
+        <div className="absolute bottom-4 left-4 md:left-8 z-20 flex justify-start">
           <UserProfile />
-        ) : (
-          <button
-            onClick={() => setShowAuthModal(true)}
-            className="bg-white/90 backdrop-blur-sm hover:bg-white text-gray-900 font-bold py-2 px-4 rounded-full text-sm shadow-lg transition-all hover:shadow-xl hover:scale-105"
-          >
-            Sign In
-          </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Main grid layout */}
-      <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 p-4 md:p-8 min-h-screen">
+      <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 p-4 md:p-8 min-h-screen">
         {/* Left sidebar - Recommendations */}
-        <div className="md:col-span-1 flex flex-col">
+        <div className="md:col-span-3 flex flex-col">
           <div className="flex flex-col bg-white/10 backdrop-blur-md border-2 border-white/20 rounded-3xl p-5">
             <h2 className={`text-xl md:text-2xl font-bold ${textColor} mb-4`}>
               Recommendations
@@ -195,9 +188,9 @@ export default function Index() {
         </div>
 
         {/* Center - Welcome & CTA */}
-        <div className="md:col-span-1 flex flex-col justify-center items-center">
-          <div className="text-center space-y-6">
-            <div>
+        <div className="md:col-span-6 flex flex-col justify-center items-center">
+          <div className="text-center space-y-6 w-full">
+            <div className="w-full">
               {/* Time of day indicator */}
               <div className="mb-4 inline-block">
                 <span className="text-white/60 text-xs font-medium px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
@@ -205,43 +198,75 @@ export default function Index() {
                 </span>
               </div>
               
-              <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight mb-3">
-                Welcome {userProfile?.name || 'there'},<br />
-                <span className="text-white/90">study today?</span>
-              </h1>
-              <p className="text-white/80 text-sm md:text-base">
-                {isLoadingAnalytics ? (
-                  "Loading your study stats..."
-                ) : userAnalytics ? (
-                  `You studied ${userAnalytics.streak} days in a row, ${Math.round(userAnalytics.total_study_time / 60)} hours total!`
+              <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight mb-3 w-full">
+                {user ? (
+                  <>
+                    Welcome {userProfile?.name || 'there'},<br />
+                    <span className="text-white/90">study today?</span>
+                  </>
                 ) : (
-                  "Start logging sessions to see your stats!"
+                  <>
+                    Welcome to<br />
+                    <span className="text-white/90">JustDoeIt</span>
+                  </>
+                )}
+              </h1>
+              <p className="text-white/80 text-sm md:text-base w-full">
+                {user ? (
+                  isLoadingAnalytics ? (
+                    "Loading your study stats..."
+                  ) : userAnalytics ? (
+                    `You studied ${userAnalytics.streak} days in a row, ${Math.round(userAnalytics.total_study_time / 60)} hours total!`
+                  ) : (
+                    "Start logging sessions to see your stats!"
+                  )
+                ) : (
+                  "Sign in to start tracking your study sessions and discover the best study spots!"
                 )}
               </p>
             </div>
 
             <div className="flex flex-col gap-4 items-center">
-              {/* Main CTA Button */}
-              <button
-                onClick={() => setShowLogModal(true)}
-                className="bg-white/90 backdrop-blur-sm hover:bg-white text-gray-900 font-bold py-4 px-8 rounded-full text-lg shadow-lg transition-all hover:shadow-xl hover:scale-105"
-              >
-                Log a session
-              </button>
+              {user ? (
+                <>
+                  {/* Main CTA Button - only show when authenticated */}
+                  <button
+                    onClick={() => setShowLogModal(true)}
+                    className="bg-white/90 backdrop-blur-sm hover:bg-white text-gray-900 font-bold py-4 px-8 rounded-full text-lg shadow-lg transition-all hover:shadow-xl hover:scale-105"
+                  >
+                    Log a session
+                  </button>
 
-              {/* Secondary link */}
-              <button
-                onClick={() => setShowRecentModal(true)}
-                className="text-white/80 hover:text-white text-sm font-semibold transition-colors"
-              >
-                View recent sessions →
-              </button>
+                  {/* Secondary link */}
+                  <button
+                    onClick={() => setShowRecentModal(true)}
+                    className="text-white/80 hover:text-white text-sm font-semibold transition-colors"
+                  >
+                    View recent sessions →
+                  </button>
+                </>
+              ) : (
+                <>
+                  {/* Sign In Button - only show when not authenticated */}
+                  <button
+                    onClick={() => setShowAuthModal(true)}
+                    className="bg-white/90 backdrop-blur-sm hover:bg-white text-gray-900 font-bold py-4 px-8 rounded-full text-lg shadow-lg transition-all hover:shadow-xl hover:scale-105"
+                  >
+                    Sign In
+                  </button>
+
+                  {/* Secondary text */}
+                  <p className="text-white/60 text-sm">
+                    Join thousands of students tracking their study habits
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </div>
 
         {/* Right sidebar - Analytics */}
-        <div className="md:col-span-1 flex flex-col">
+        <div className="md:col-span-3 flex flex-col">
           <div className="space-y-3 bg-white/10 backdrop-blur-md border-2 border-white/20 rounded-3xl p-6">
             <h2 className={`text-xl md:text-2xl font-bold ${textColor} mb-6`}>
               Personal Analytics
