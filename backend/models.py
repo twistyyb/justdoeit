@@ -88,3 +88,12 @@ class UserProfileGetResponse(BaseModel):
     name: str
     created_at: str
     updated_at: str
+
+class UserSummary(BaseModel):
+    """Model for user summary (dropdown/list)"""
+    id: str
+    name: str
+
+class UsersListResponse(BaseModel):
+    """Model for users list endpoint response"""
+    users: List[UserSummary]

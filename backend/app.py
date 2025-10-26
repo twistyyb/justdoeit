@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from supabase import Client
 from typing import List
-from models import SessionCreate, SessionResponse, LocationCreate, LocationResponse, LocationSummary, LocationsListResponse, LocationDetailsResponse, CrowdednessBin
+from models import SessionCreate, SessionResponse, LocationCreate, LocationResponse, LocationSummary, LocationsListResponse, LocationDetailsResponse, CrowdednessBin, UserSummary, UsersListResponse
 from pydantic import BaseModel
 import logging
 from uuid import UUID
@@ -141,6 +141,19 @@ async def location_names():
     locations = [LocationSummary(**item) for item in response.data]
     
     return LocationsListResponse(locations=locations)
+
+
+@app.get("/users", response_model=UsersListResponse)
+async def get_users():
+    """Get all users with their IDs and names for dropdown/selection"""
+    response = supabase.table("user_profiles").select("id", "name").execute()
+    
+    # Convert Supabase data to our Pydantic model
+    users = [UserSummary(**item) for item in response.data]
+    
+    return UsersListResponse(users=users)
+
+
 
 @app.get("/location_details/{location_id}", response_model=LocationDetailsResponse)
 async def get_location_details(location_id: UUID):

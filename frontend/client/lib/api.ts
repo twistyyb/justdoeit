@@ -82,16 +82,11 @@ class ApiClient {
 
   // === User Endpoints (if implemented) ===
 
-  async getUsers(params?: SearchUsersRequest): Promise<User[]> {
-    // Endpoint: GET /users?query=...&limit=...
-    // Note: Not yet implemented in backend
-    const searchParams = new URLSearchParams();
-    if (params?.query) searchParams.append("query", params.query);
-    if (params?.limit) searchParams.append("limit", String(params.limit));
-
-    const queryString = searchParams.toString();
-    const url = `/users${queryString ? `?${queryString}` : ""}`;
-    return this.request<User[]>(url);
+  async getUsers(): Promise<User[]> {
+    // Endpoint: GET /users
+    // Backend returns: { users: [...] }
+    const response = await this.request<{ users: User[] }>("/users");
+    return response.users;
   }
 
   async getUser(userId: string): Promise<User> {

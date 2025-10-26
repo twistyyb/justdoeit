@@ -1,20 +1,35 @@
 import { useState } from "react";
-import { X, Check } from "lucide-react";
+import { X, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { LocationSelector } from "./LocationSelector";
-// import { CollaboratorSelector } from "./CollaboratorSelector"; // TODO: Re-enable when backend has user system
+import { CollaboratorSelector } from "./CollaboratorSelector";
 import { apiClient } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
+import type { Location, User } from "../../shared/api";
 
 interface LogSessionModalProps {
   isOpen: boolean;
   onClose: () => void;
+  preloadedLocations?: Location[];
+  preloadedUsers?: User[];
+  onLocationCreated?: (newLocation: Location) => void;
 }
 
-export function LogSessionModal({ isOpen, onClose }: LogSessionModalProps) {
+export function LogSessionModal({ 
+  isOpen, 
+  onClose, 
+  preloadedLocations = [], 
+  preloadedUsers = [], 
+  onLocationCreated 
+}: LogSessionModalProps) {
+  const { user, userProfile } = useAuth();
+  
   // Get current time
   const getCurrentDateTime = () => {
     const now = new Date();
     return now.toISOString().slice(0, 16);
   };
+
+  // No longer need internal preloading state - data comes from props
 
   // Form state
   const [locationId, setLocationId] = useState<string | null>(null);
@@ -24,14 +39,27 @@ export function LogSessionModal({ isOpen, onClose }: LogSessionModalProps) {
   const [cleanliness, setCleanliness] = useState<number>(3);
   const [comment, setComment] = useState("");
   const [outletAvailability, setOutletAvailability] = useState(true);
-  // const [collaborators, setCollaborators] = useState<string[]>([]); // TODO: Re-enable when backend has user system
+  const [collaborators, setCollaborators] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">(
     "idle"
   );
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+
+  // Handle new location creation to keep preloaded data fresh
+  const handleLocationCreated = (newLocation: Location) => {
+    if (onLocationCreated) {
+      onLocationCreated(newLocation);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!user) {
+      alert("Please sign in to log a session");
+      return;
+    }
 
     if (!locationId) {
       alert("Please select a location");
@@ -54,10 +82,21 @@ export function LogSessionModal({ isOpen, onClose }: LogSessionModalProps) {
     try {
       // Prepare payload matching backend format
       // POST http://127.0.0.1:5002/create_session
+      
+      // Include current user in creators array along with selected collaborators
+      const allCreators = user ? [user.id, ...collaborators] : collaborators;
+      
+      console.log("Current user ID:", user?.id);
+      console.log("Selected collaborators:", collaborators);
+      console.log("All creators (current user + collaborators):", allCreators);
+      
+      // Use current datetime if no custom time is set (when advanced options are hidden)
+      const sessionTime = showAdvancedOptions ? inputTime : getCurrentDateTime();
+      
       const payload = {
-        creators: [], // TODO: Add real user UUIDs when backend implements user system (GET /users endpoint needed)
+        creators: allCreators, // Current user + selected collaborators (all UUIDs)
         locationid: locationId,  // uuid from dropdown
-        inputtime: new Date(inputTime).toISOString(), // ISO format with timezone
+        inputtime: new Date(sessionTime).toISOString(), // ISO format with timezone
         duration: parseInt(duration) || 0,  // int (mins), convert string to number
         rating,                  // double (1-5)
         cleanliness,            // int (1-5)
@@ -84,7 +123,8 @@ export function LogSessionModal({ isOpen, onClose }: LogSessionModalProps) {
         setCleanliness(3);
         setComment("");
         setOutletAvailability(true);
-        // setCollaborators([]); // TODO: Re-enable when backend has user system
+        setCollaborators([]);
+        setShowAdvancedOptions(false);
       }, 1500);
     } catch (error) {
       console.error("Error submitting session:", error);
@@ -102,7 +142,9 @@ export function LogSessionModal({ isOpen, onClose }: LogSessionModalProps) {
       <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b-2 border-gray-200 flex justify-between items-center p-6 rounded-t-3xl">
-          <h2 className="text-3xl font-bold text-gray-900">Log a Session</h2>
+          <h2 className="text-3xl font-bold text-gray-900">
+            {userProfile?.name || user?.email || "User"}'s New Session
+          </h2>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700 transition-colors"
@@ -113,6 +155,7 @@ export function LogSessionModal({ isOpen, onClose }: LogSessionModalProps) {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+
           {/* Location */}
           <div>
             <label className="text-sm font-semibold text-gray-700 mb-2 block">
@@ -121,22 +164,18 @@ export function LogSessionModal({ isOpen, onClose }: LogSessionModalProps) {
             <LocationSelector
               selectedLocation={locationId}
               onLocationSelect={setLocationId}
+              preloadedLocations={preloadedLocations}
+              onLocationCreated={handleLocationCreated}
             />
           </div>
 
-          {/* Date & Time */}
-          <div>
-            <label htmlFor="inputTime" className="text-sm font-semibold text-gray-700 mb-2 block">
-              Date & Time *
-            </label>
-            <input
-              id="inputTime"
-              type="datetime-local"
-              value={inputTime}
-              onChange={(e) => setInputTime(e.target.value)}
-              className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-gray-900 font-semibold bg-white"
-            />
-          </div>
+          {/* Collaborators */}
+          <CollaboratorSelector
+            selectedCollaborators={collaborators}
+            onCollaboratorsChange={setCollaborators}
+            preloadedUsers={preloadedUsers}
+          />
+
 
           {/* Duration */}
           <div>
@@ -251,17 +290,42 @@ export function LogSessionModal({ isOpen, onClose }: LogSessionModalProps) {
             />
           </div>
 
-          {/* Collaborators */}
-          {/* TODO: Re-enable CollaboratorSelector when backend implements:
-              1. Users table in database
-              2. GET /users endpoint to fetch users
-              3. POST /users endpoint for user registration
-              4. Authentication system (Supabase Auth integration)
-          */}
-          {/* <CollaboratorSelector
-            selectedCollaborators={collaborators}
-            onCollaboratorsChange={setCollaborators}
-          /> */}
+          {/* Advanced Options Toggle */}
+          <div className="border-t border-gray-200 pt-2">
+            <button
+              type="button"
+              onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+              className="flex items-center justify-center gap-2 w-full py-1 text-gray-600 hover:text-gray-800 transition-colors"
+            >
+              <span className="text-xs font-medium">More Options</span>
+              {showAdvancedOptions ? (
+                <ChevronUp className="w-3 h-3" />
+              ) : (
+                <ChevronDown className="w-3 h-3" />
+              )}
+            </button>
+          </div>
+
+          {/* Advanced Options - Date & Time */}
+          {showAdvancedOptions && (
+            <div className="space-y-4 bg-gray-50 rounded-lg p-4">
+              <div>
+                <label htmlFor="inputTime" className="text-sm font-semibold text-gray-700 mb-2 block">
+                  Custom Date & Time (Optional)
+                </label>
+                <input
+                  id="inputTime"
+                  type="datetime-local"
+                  value={inputTime}
+                  onChange={(e) => setInputTime(e.target.value)}
+                  className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-gray-900 font-semibold bg-white"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Leave this as default to use current time, or set a custom time for backlogging sessions
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Submit Status */}
           {submitStatus === "success" && (
@@ -284,7 +348,7 @@ export function LogSessionModal({ isOpen, onClose }: LogSessionModalProps) {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={isSubmitting || !locationId}
+            disabled={isSubmitting || !locationId || !user}
             className="w-full bg-primary hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-full text-lg shadow-lg transition-all hover:shadow-xl"
           >
             {isSubmitting ? "Submitting..." : "Log Session"}

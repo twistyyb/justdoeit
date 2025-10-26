@@ -6,7 +6,9 @@ import { RecommendationCard } from "@/components/RecommendationCard";
 import { AnalyticsCard } from "@/components/AnalyticsCard";
 import { AuthModal } from "@/components/AuthModal";
 import { UserProfile } from "@/components/UserProfile";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { useTimeBasedGradient } from "@/hooks/useTimeBasedGradient";
+import { useSessionDataPreload } from "@/hooks/useSessionDataPreload";
 
 export default function Index() {
   const [showLogModal, setShowLogModal] = useState(false);
@@ -14,16 +16,30 @@ export default function Index() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { user, userProfile } = useAuth();
   const { gradient, name, textColor } = useTimeBasedGradient();
+  
+  // Preload session data as soon as the page loads
+  const { 
+    locations: preloadedLocations, 
+    users: preloadedUsers, 
+    isLoading: isPreloadingData,
+    error: preloadError,
+    isPreloaded,
+    addLocation 
+  } = useSessionDataPreload();
 
   return (
-    <div
-      className="min-h-screen w-full overflow-hidden transition-all duration-[3000ms] ease-in-out"
-      style={{
-        backgroundImage: gradient,
-      }}
-    >
-      {/* Overlay for depth */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20 pointer-events-none"></div>
+    <>
+      {/* Loading Overlay */}
+      <LoadingOverlay isLoading={isPreloadingData} />
+      
+      <div
+        className="min-h-screen w-full overflow-hidden transition-all duration-[3000ms] ease-in-out"
+        style={{
+          backgroundImage: gradient,
+        }}
+      >
+        {/* Overlay for depth */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20 pointer-events-none"></div>
 
       {/* Header with user profile */}
       <div className="absolute bottom-4 left-4 z-20 flex justify-start">
@@ -159,6 +175,9 @@ export default function Index() {
       <LogSessionModal
         isOpen={showLogModal}
         onClose={() => setShowLogModal(false)}
+        preloadedLocations={preloadedLocations}
+        preloadedUsers={preloadedUsers}
+        onLocationCreated={addLocation}
       />
       <RecentSessionsModal
         isOpen={showRecentModal}
@@ -168,6 +187,7 @@ export default function Index() {
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
       />
-    </div>
+      </div>
+    </>
   );
 }
