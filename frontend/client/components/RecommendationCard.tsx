@@ -175,7 +175,7 @@ export function RecommendationCard({
         className={`relative overflow-hidden border border-white/20 rounded-2xl flex flex-col justify-between transition-all duration-700 ease-out cursor-pointer ${
           isExpanded 
             ? 'h-[250%] p-6 shadow-xl' 
-            : 'p-5'
+            : 'p-5 hover:scale-105 hover:shadow-xl'
         }`}
         onClick={handleCardClick}
       >
