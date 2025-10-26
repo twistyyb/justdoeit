@@ -9,23 +9,6 @@ anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
 # Initialize the client (API key will be read from ANTHROPIC_API_KEY environment variable)
 client = anthropic.Anthropic(api_key=anthropic_api_key)
 
-# Create a chat completion
-message = client.messages.create(
-    model="claude-sonnet-4-5-20250929",  # Or your desired Claude model
-    max_tokens=1024,
-    messages=[
-        {"role": "user", "content": "Hello, Claude"},
-        {"role": "assistant", "content": "Hello! How can I assist you today?"},
-        {"role": "user", "content": "Can you tell me a fun fact about space?"}
-    ]
-)
-
-
-
-# Print the assistant's response
-print(message.content)
-
-
 
 def get_study_recommendation_with_full_context(location_info, sessions_info):
     system_context = f"""
@@ -35,9 +18,8 @@ def get_study_recommendation_with_full_context(location_info, sessions_info):
     All locations are given here:
     {location_info}
 
-
+    User's study history is given here:
     {sessions_info}
-    - Average rating is a user's PRODUCTIVENESS evaluation of the location.
 
     Take into account the user's entire study history and come to an educated decision on the next location the user should try.
     Choose the three best study locations the user should try. Under all circumstances, you must choose exactly three.
@@ -50,13 +32,41 @@ def get_study_recommendation_with_full_context(location_info, sessions_info):
     - Take into account user's comments on the location.
     - Take into account the description of the location.
 
+    You must respond in a stringified JSON format. This is the only format of your response. Do not respond with anything else.
+    The JSON must be in the following format:
     
-
+    """+ """
+    ```json
+    {
+        "recommendations": [
+            {
+                "rank": 1,
+                "location_id": "string"
+                "reasoning": "string"
+            },
+            {
+                "rank": 2,
+                "location_id": "string"
+                "reasoning": "string"
+            },
+            {
+                "rank": 3,
+                "location_id": "string"
+                "reasoning": "string"
+            }
+        ]
+    }
     
+    The reasoning must be a short, concise explanation of why the location was chosen.
+    The location_id must be the ID of the location in the database.
+    Order the recommendations by rank, from 1 to 3.
     """
     response = client.messages.create(
         model="claude-sonnet-4-5-20250929",
         max_tokens=1024,
-        messages=[{"role": "system", "content": system_context}, {"role": "user", "content": user_query}]
+        messages=[{"role": "user", "content": system_context}]
     )
+    
+    print(f"claude response: {response.content[0].text}")
+    input("Press Enter to continue...")
     return response.content[0].text

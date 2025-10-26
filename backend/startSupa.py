@@ -4,8 +4,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-print(f"SUPABASE_URL: {os.environ.get('SUPABASE_URL')}")
-print(f"SUPABASE_KEY: {os.environ.get('SUPABASE_KEY')}")
 
 url: str = os.environ.get("SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_KEY")
@@ -15,7 +13,7 @@ if not url or not key:
 
 supabase: Client = create_client(url, key)
 
-print(supabase.table("locations").select("*").execute())
+# print(supabase.table("locations").select("*").execute())
 
 def get_supabase():
     return supabase

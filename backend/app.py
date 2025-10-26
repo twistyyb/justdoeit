@@ -11,7 +11,7 @@ import pytz
 from collections import Counter
 from startSupa import get_supabase
 from models import UserProfileCreate, UserProfileResponse, UserProfileGetResponse
-# from claude import create_claude_message_with_context, create_structured_context, get_study_recommendation_with_full_context
+from claude import get_study_recommendation_with_full_context
 
 
 supabase = get_supabase()
@@ -217,14 +217,17 @@ async def get_all_location_info():
             # Call the location_details endpoint logic
             location_details = await get_location_details(location_uuid)
             
-            # Add to the mapping
-            location_details_map[location_id] = location_details.model_dump()
+            # Add to the mapping with additional basic fields
+            location_data = location_details.model_dump()
+            location_data["shortloc"] = location.get('shortloc', '')
+            location_details_map[location_id] = location_data
             
         except Exception as e:
             logger.error(f"Error getting details for location {location_id}: {e}")
             # If there's an error, still include the basic location info
             location_details_map[location_id] = {
                 "name": location.get('name', ''),
+                "shortloc": location.get('shortloc', ''),
                 "summary": location.get('summary', ''),
                 "coordinate_x": location.get('coordinate_x', 0.0),
                 "coordinate_y": location.get('coordinate_y', 0.0),
@@ -860,6 +863,64 @@ async def get_user_sessions_aggregate(user_id: UUID):
     logger.info(f"   - Total study time: {analytics_data.get('total_study_time', 0)} minutes")
     
     return aggregate_response
+
+@app.get("/get_recommendation/{user_id}")
+async def get_recommendation(user_id: UUID):
+    try:
+        location_info = await get_all_location_info()
+        sessions_info = await get_user_sessions_aggregate(user_id)
+        recommendation_text = get_study_recommendation_with_full_context(location_info, sessions_info)
+        
+        # Parse the JSON response from Claude
+        import json
+        import re
+        
+        # Extract JSON from the response (in case there's extra text)
+        json_match = re.search(r'```json\s*(\{.*?\})\s*```', recommendation_text, re.DOTALL)
+        if json_match:
+            json_str = json_match.group(1)
+        else:
+            # Try to find JSON without code blocks
+            json_match = re.search(r'(\{.*\})', recommendation_text, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(1)
+            else:
+                json_str = recommendation_text
+        
+        # Parse the JSON
+        recommendation_data = json.loads(json_str)
+        
+        # Add location names and shortloc to each recommendation
+        for rec in recommendation_data.get("recommendations", []):
+            location_id = rec.get("location_id")
+            if location_id in location_info:
+                location_data = location_info[location_id]
+                rec["location_name"] = location_data.get("name", "Unknown Location")
+                rec["shortloc"] = location_data.get("shortloc", "Unknown")
+            else:
+                # Fallback if location not found
+                rec["location_name"] = "Unknown Location"
+                rec["shortloc"] = "Unknown"
+        
+        return {
+            "message": "Recommendation generated successfully",
+            "data": recommendation_data
+        }
+        
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse Claude response as JSON: {e}")
+        return {
+            "message": "Error parsing recommendation response",
+            "error": "Invalid JSON format from AI service",
+            "data": None
+        }
+    except Exception as e:
+        logger.error(f"Error generating recommendation for user {user_id}: {e}")
+        return {
+            "message": "Error generating recommendation",
+            "error": str(e),
+            "data": None
+        }
 
 
 if __name__ == "__main__":
