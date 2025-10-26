@@ -212,7 +212,7 @@ export default function Index() {
       <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 p-4 md:p-8 min-h-screen">
         {/* Left sidebar - Recommendations */}
         <div className="md:col-span-3 flex flex-col">
-          <div className="flex flex-col bg-white/10 backdrop-blur-md border-2 border-white/20 rounded-3xl p-5">
+          <div className="flex flex-col bg-white/10 backdrop-blur-md border-2 border-white/10 rounded-3xl p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className={`text-xl md:text-2xl font-bold ${textColor}`}>
                 Recommendations
@@ -274,7 +274,7 @@ export default function Index() {
                 {/* See All Locations Toggle Button */}
                 <button
                   onClick={() => setShowLocationMap(!showLocationMap)}
-                  className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-white/30 ${textColor} font-semibold transition-all hover:bg-white/10 hover:border-white/50`}
+                  className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-white/20 ${textColor} font-semibold transition-all hover:bg-white/10 hover:border-white/50`}
                 >
                   <span>{showLocationMap ? 'Show Recommendations' : 'See All Locations'}</span>
                   {showLocationMap ? (
@@ -321,7 +321,9 @@ export default function Index() {
                   isLoadingAnalytics ? (
                     "Loading your study stats..."
                   ) : userAnalytics ? (
-                    `You studied ${userAnalytics.streak} days in a row, ${Math.round(userAnalytics.total_study_time / 60)} hours total!`
+                    <>
+                      You studied {userAnalytics.streak} days in a <strong>row</strong>, {Math.round(userAnalytics.total_study_time / 60)} hours <strong>total</strong>!
+                    </>
                   ) : (
                     "Start logging sessions to see your stats!"
                   )
@@ -372,7 +374,7 @@ export default function Index() {
 
         {/* Right sidebar - Analytics */}
         <div className="md:col-span-3 flex flex-col">
-          <div className="space-y-3 bg-white/10 backdrop-blur-md border-2 border-white/20 rounded-3xl p-6">
+          <div className="space-y-3 bg-white/10 backdrop-blur-md border-2 border-white/10 rounded-3xl p-6">
             <h2 className={`text-xl md:text-2xl font-bold ${textColor} mb-6`}>
               Personal Analytics
             </h2>
