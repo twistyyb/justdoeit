@@ -1,0 +1,139 @@
+/**
+ * Centralized API client for all backend requests
+ * Backend API: http://127.0.0.1:5002
+ */
+
+import {
+  Location,
+  CreateLocationRequest,
+  CreateLocationResponse,
+  User,
+  SearchUsersRequest,
+  Session,
+  CreateSessionRequest,
+  CreateSessionResponse,
+} from "../../shared/api";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:5002";
+
+class ApiClient {
+  private baseUrl: string;
+
+  constructor(baseUrl: string = API_BASE_URL) {
+    this.baseUrl = baseUrl;
+  }
+
+  /**
+   * Generic fetch wrapper with error handling
+   */
+  private async request<T>(
+    endpoint: string,
+    options?: RequestInit
+  ): Promise<T> {
+    const url = `${this.baseUrl}${endpoint}`;
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          "Content-Type": "application/json",
+          ...options?.headers,
+        },
+        ...options,
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({
+          detail: response.statusText,
+        }));
+        throw new Error(error.detail || `API error: ${response.status}`);
+      }
+
+      if (response.status === 204) {
+        return null as unknown as T;
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error(`API Error [${endpoint}]:`, error);
+      throw error;
+    }
+  }
+
+  // === Location Endpoints ===
+
+  async getLocations(): Promise<Location[]> {
+    // Endpoint: GET /location_names
+    // Backend returns: { locations: [...] }
+    const response = await this.request<{ locations: Location[] }>("/location_names");
+    return response.locations;
+  }
+
+  async createLocation(data: CreateLocationRequest): Promise<CreateLocationResponse> {
+    // Endpoint: POST /create_location
+    // Backend expects: { name, shortloc, coordinate_x?, coordinate_y?, summary? }
+    const response = await this.request<{ message: string; data: any[] }>("/create_location", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    // Backend returns: { message: "Location created", data: [...] }
+    // Extract the created location from the data array
+    return response.data[0];
+  }
+
+  // === User Endpoints (if implemented) ===
+
+  async getUsers(params?: SearchUsersRequest): Promise<User[]> {
+    // Endpoint: GET /users?query=...&limit=...
+    // Note: Not yet implemented in backend
+    const searchParams = new URLSearchParams();
+    if (params?.query) searchParams.append("query", params.query);
+    if (params?.limit) searchParams.append("limit", String(params.limit));
+
+    const queryString = searchParams.toString();
+    const url = `/users${queryString ? `?${queryString}` : ""}`;
+    return this.request<User[]>(url);
+  }
+
+  async getUser(userId: string): Promise<User> {
+    // Endpoint: GET /users/{id}
+    return this.request<User>(`/users/${userId}`);
+  }
+
+  // === Session Endpoints ===
+
+  async getSessions(): Promise<Session[]> {
+    // Endpoint: GET /sessions
+    return this.request<Session[]>("/sessions");
+  }
+
+  async getSession(sessionId: string): Promise<Session> {
+    // Endpoint: GET /sessions/{id}
+    return this.request<Session>(`/sessions/${sessionId}`);
+  }
+
+  async createSession(data: CreateSessionRequest): Promise<CreateSessionResponse> {
+    // Endpoint: POST /create_session
+    // Input format:
+    // {
+    //   creators: List[uuid] (including self),
+    //   locationid: uuid,
+    //   inputtime: isoformat with timezone,
+    //   duration: int (mins),
+    //   rating: double (1-5),
+    //   cleanliness: int (1-5),
+    //   comment: str,
+    //   outletavailability: bool  (LOWERCASE!)
+    // }
+    // Output: {"message": "Session created", "data": {...}}
+    return this.request<CreateSessionResponse>("/create_session", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+}
+
+// Export singleton instance
+export const apiClient = new ApiClient();
+
+// Export class for testing with custom base URL
+export { ApiClient };
