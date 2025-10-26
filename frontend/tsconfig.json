@@ -32,13 +32,14 @@
         "@shared/*": ["./shared/*"]
       }
     },
-    "include": [
-      "client/**/*",
-      "server/**/*",
-      "shared/**/*",
-      "vite.config.ts",
-      "vite.config.server.ts"
-    ],
+  "include": [
+    "client/**/*",
+    "server/**/*",
+    "shared/**/*",
+    "vite.config.ts",
+    "vite.config.server.ts",
+    "vite-env.d.ts"
+  ],
     "exclude": ["node_modules", "dist"]
   }
   
