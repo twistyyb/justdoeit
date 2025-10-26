@@ -1,201 +1,119 @@
-# JustDoeIt - Study Session Tracker
+# 🎓 JustDoeIt  
+**Find your perfect study spot.**  
+*Made for Berkeley students who want to study smarter, not harder.*
 
-A modern web application to track and analyze study sessions with location recommendations and analytics.
+---
 
-## Project Structure
+## 🌟 Our Vision
 
+At **JustDoeIt**, we believe *where* you study matters.  
+Our mission is to help UC Berkeley students **discover, track, and optimize** their study experience — making productivity more effortless and enjoyable.
+
+> Because every student deserves their ideal study space.
+
+---
+
+## 💭 The Challenge
+
+Let’s be real — finding a good study spot at Berkeley shouldn’t feel like a full-time job.
+
+- “Where can I find a quiet seat right now?”  
+- “Which café has outlets and strong WiFi?”  
+- “Why do I always end up in the same few places?”  
+
+Students waste **hours each week** searching, relocating, or guessing where to study.  
+
+That’s where **JustDoeIt** comes in.
+
+---
+
+## 🚀 What We Do
+
+**JustDoeIt** combines **AI**, **community data**, and **personal analytics** to help you study better — anywhere, anytime.
+
+### 🔍 Smart Recommendations
+Get personalized study spot suggestions based on your habits, focus level, and productivity trends.
+
+### 📈 Personal Study Dashboard
+Track and visualize your learning journey:
+- Study streaks and total session hours  
+- Productivity scores by location  
+- Peak times and crowd levels  
+
+### 🗺️ Interactive Berkeley Map
+Explore real-time data for campus and local cafés — including outlets, seating, noise, and busyness.
+
+### 💬 Community Insights
+See where your peers study, read reviews, and share your own hidden gems.
+
+---
+
+## 💡 Why Students Love It
+
+✅ Instantly discover new, high-quality study spots  
+✅ Boost productivity with data-backed insights  
+✅ Save time by skipping crowded locations  
+✅ Build consistent study habits  
+✅ Connect with the Berkeley student community  
+
+---
+
+## 🧠 Powered by Tech, Built for Students
+
+**Frontend**
+- React 18 + TypeScript  
+- Vite + TailwindCSS + Radix UI  
+
+**Backend**
+- FastAPI + Supabase (PostgreSQL)  
+- Python 3.9+  
+
+**Deployment**
+- Modern CI/CD pipeline  
+- Docker-ready  
+- Designed for scalability  
+
+---
+
+## ⚙️ Quick Setup (Developers)
+
+### Backend Setup
+```bash
+cd backend
+pip install -r requirements.txt
+python startSupa.py
+uvicorn app:app --reload  # runs on port 5002
 ```
-justdoeit/
-├── backend/              # Python FastAPI backend
-│   ├── app.py           # Main API application
-│   ├── requirements.txt
-│   └── __init__.py
-├── frontend/             # React + TypeScript frontend (Vite)
-│   ├── client/          # React application code
-│   │   ├── components/  # React components (UI + business logic)
-│   │   ├── hooks/       # Custom React hooks
-│   │   ├── lib/         # Utility functions & API client
-│   │   ├── pages/       # Page components (Index, NotFound)
-│   │   └── styles/      # Global CSS styles
-│   ├── shared/          # Shared TypeScript types
-│   │   └── api.ts       # API type definitions
-│   ├── server/          # Express dev server
-│   │   ├── index.ts     # Server setup for development
-│   │   └── node-build.ts # Production server build
-│   ├── public/          # Static assets (favicon, images)
-│   ├── index.html       # HTML entry point
-│   ├── package.json     # Dependencies & scripts
-│   ├── tsconfig.json    # TypeScript configuration
-│   ├── vite.config.ts   # Vite build configuration
-│   └── tailwind.config.ts # Tailwind CSS configuration
-└── README.md
-```
-
-## Technology Stack
-
-### Frontend
-- **Framework**: React 18 with TypeScript
-- **Build Tool**: Vite 7
-- **UI Components**: Radix UI primitives
-- **Styling**: TailwindCSS
-- **State Management**: React hooks + TanStack Query (ready)
-- **Forms**: React Hook Form
-- **Dev Server**: Express (for API proxying during development)
-
-### Backend (To Be Implemented)
-- **Planned**: FastAPI + Supabase
-- **Current**: Express dev server (development only)
-
-## Getting Started
-
-### Prerequisites
-- Node.js 18+ and pnpm (specified package manager)
-- Git
 
 ### Frontend Setup
-
-1. **Navigate to the frontend directory:**
-   ```bash
-   cd frontend
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   pnpm install
-   ```
-
-3. **Create environment file (optional):**
-   ```bash
-   # Create .env.local file
-   cat > .env.local << EOF
-   VITE_API_BASE_URL=http://localhost:8000
-   EOF
-   ```
-
-4. **Start the development server:**
-   ```bash
-   pnpm dev
-   ```
-   
-   The application will be available at `http://localhost:8080`
-
-5. **Build for production:**
-   ```bash
-   pnpm build
-   ```
-   
-   This creates:
-   - `dist/spa/` - Client-side React build
-   - `dist/server/` - Server-side Express build
-
-6. **Run production build:**
-   ```bash
-   pnpm start
-   ```
-
-### Available Scripts
-
 ```bash
-pnpm dev              # Start development server with hot reload
-pnpm build            # Build both client and server for production
-pnpm build:client     # Build client only
-pnpm build:server     # Build server only
-pnpm start            # Run production build
-pnpm test             # Run tests
-pnpm typecheck        # Check TypeScript types
-pnpm format.fix       # Format code with Prettier
+cd frontend
+pnpm install
+pnpm dev  # http://localhost:8080
 ```
 
-## Essential Files for Running Frontend
+## 📱 Product Roadmap
+### 🎯 Live Now
+- AI-powered location recommendations
+- Study analytics and streak tracking
+- Interactive campus map
+- Real-time busyness + productivity data
+- Collaborator management
 
-To run the frontend on your local computer, you need these files:
+### 🔜 Coming Soon
+- iOS & Android mobile apps
+- Study group & social features
+- Expansion to Bay Area campuses
+- Offline study mode
 
-### Core Configuration Files
-- `package.json` - Dependencies and scripts
-- `pnpm-lock.yaml` - Lock file for consistent installs
-- `tsconfig.json` - TypeScript configuration
-- `vite.config.ts` - Vite build configuration
-- `vite.config.server.ts` - Server build configuration
-- `tailwind.config.ts` - Tailwind CSS configuration
-- `postcss.config.js` - PostCSS configuration
+## 🎓 Our Home: UC Berkeley
 
-### Application Code
-- `client/` - All React application code
-  - `components/` - UI components (modals, selectors, cards)
-  - `hooks/` - Custom React hooks
-  - `lib/` - Utilities and API client
-  - `pages/` - Page components (Index.tsx, NotFound.tsx)
-  - `styles/` - Global CSS and Tailwind styles
-- `shared/` - Shared TypeScript types
-  - `api.ts` - API type definitions
-- `server/` - Express development server
-  - `index.ts` - Dev server entry point
-  - `node-build.ts` - Production server build
-- `public/` - Static assets (favicon, images, robots.txt)
-- `index.html` - HTML entry point
+Born at **UC Berkeley**, built for its students.
+We’re creating the ultimate study discovery experience — starting here and soon expanding across the Bay Area.
 
-### Documentation
-- `api-integration.md` - Comprehensive API integration guide
+## ❤️ Made with Berkeley Spirit
 
-## API Integration
+We’re students, creators, and builders — united by one goal:
+**To make studying feel effortless and inspiring.**
 
-The frontend is ready for backend integration. All API calls are centralized in `client/lib/api.ts` using the `ApiClient` class.
-
-### Expected API Endpoints
-
-```
-GET  /api/locations      - Fetch all study locations
-POST /api/locations      - Create new location
-GET  /api/users          - Search users (for collaborators)
-GET  /api/users/{id}     - Get specific user
-GET  /api/sessions       - Get user's study sessions
-GET  /api/sessions/{id}  - Get specific session
-POST /api/create_sesh    - Create new study session
-```
-
-See `api-integration.md` for detailed API specifications.
-
-## Development Workflow
-
-1. **Frontend development** runs independently on port 8080
-2. **Express dev server** handles `/api/*` routes during development
-3. **Backend integration** point `VITE_API_BASE_URL` to your FastAPI server when ready
-4. **Production deployment** builds static React app + optional server build
-
-## Features
-
-### Current Features (UI Ready)
-- ✅ Dashboard with recommendations and analytics
-- ✅ Log study session modal with form validation
-- ✅ Recent sessions viewer
-- ✅ Location selector with create new option
-- ✅ Collaborator multi-select
-- ✅ Modern, responsive design with gradient backgrounds
-- ✅ Component library (Radix UI + custom components)
-
-### Backend Integration Needed
-- ⏳ User authentication
-- ⏳ Session CRUD operations
-- ⏳ Location management
-- ⏳ User search and collaboration
-- ⏳ Analytics data aggregation
-- ⏳ Database (Supabase PostgreSQL)
-
-## Project Status
-
-- **Frontend**: ✅ Complete and ready for integration
-- **Backend**: ⏳ To be implemented with FastAPI
-- **Database**: ⏳ To be set up with Supabase
-- **Authentication**: ⏳ To be implemented
-
-## Contributing
-
-1. Make changes in the `frontend/client/` directory
-2. Test with `pnpm dev`
-3. Type check with `pnpm typecheck`
-4. Format code with `pnpm format.fix`
-5. Build to ensure no errors: `pnpm build`
-
-## License
-
-[Add your license here]
+**Study smarter. Explore more. JustDoeIt.**
