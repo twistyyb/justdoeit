@@ -247,7 +247,7 @@ export default function Index() {
                       const address = 'shortloc' in item ? item.shortloc || 'Unknown' : '';
                       const description = 'reasoning' in item ? item.reasoning : (item.summary || "No description available");
                       const imageUrl = 'image' in item ? item.image : '';
-                      
+                      console.log("imageUrl", imageUrl);
                       return (
                         <RecommendationCard
                           locationId={locationId}
