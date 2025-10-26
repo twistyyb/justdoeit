@@ -50,8 +50,9 @@ async def respond(request: Request):
 @app.post("/create_session")
 async def create_location(request: Request):
     data = await request.json()
-    response = supabase.table("locations").insert(data).execute()
-    return {"message": "Location created", "data": response.data}
+    print(f"received data: {data}")
+    response = supabase.table("sessions").insert(data).execute()
+    return {"message": "Session created", "data": response.data}
 
 
 @app.post("/create_location")
