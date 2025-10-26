@@ -1,13 +1,18 @@
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { LogSessionModal } from "@/components/LogSessionModal";
 import { RecentSessionsModal } from "@/components/RecentSessionsModal";
 import { RecommendationCard } from "@/components/RecommendationCard";
 import { AnalyticsCard } from "@/components/AnalyticsCard";
+import { AuthModal } from "@/components/AuthModal";
+import { UserProfile } from "@/components/UserProfile";
 import { useTimeBasedGradient } from "@/hooks/useTimeBasedGradient";
 
 export default function Index() {
   const [showLogModal, setShowLogModal] = useState(false);
   const [showRecentModal, setShowRecentModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const { user } = useAuth();
   const { gradient, name } = useTimeBasedGradient();
 
   return (
@@ -19,6 +24,20 @@ export default function Index() {
     >
       {/* Overlay for depth */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20 pointer-events-none"></div>
+
+      {/* Header with user profile */}
+      <div className="absolute bottom-4 left-4 z-20 flex justify-start">
+        {user ? (
+          <UserProfile />
+        ) : (
+          <button
+            onClick={() => setShowAuthModal(true)}
+            className="bg-white/90 backdrop-blur-sm hover:bg-white text-gray-900 font-bold py-2 px-4 rounded-full text-sm shadow-lg transition-all hover:shadow-xl hover:scale-105"
+          >
+            Sign In
+          </button>
+        )}
+      </div>
 
       {/* Main grid layout */}
       <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 p-4 md:p-8 min-h-screen">
@@ -140,6 +159,10 @@ export default function Index() {
       <RecentSessionsModal
         isOpen={showRecentModal}
         onClose={() => setShowRecentModal(false)}
+      />
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
       />
     </div>
   );
