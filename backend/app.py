@@ -2,10 +2,12 @@ from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from supabase import Client
 from typing import List
-from models import SessionCreate, SessionResponse, LocationCreate, LocationResponse, LocationSummary, LocationsListResponse, LocationDetailsResponse, CrowdednessBin
+from models import SessionCreate, SessionResponse, LocationCreate, LocationResponse, LocationSummary, LocationsListResponse, LocationDetailsResponse, CrowdednessBin, UserAnalyticsResponse
 from pydantic import BaseModel
 import logging
 from uuid import UUID
+from datetime import datetime, timezone, timedelta
+from collections import Counter
 from startSupa import get_supabase
 from models import UserProfileCreate, UserProfileResponse, UserProfileGetResponse
 
@@ -239,7 +241,153 @@ async def get_location_details(location_id: UUID):
     )
 
 
-
+@app.get("/user_analytics/{user_id}", response_model=UserAnalyticsResponse)
+async def get_user_analytics(user_id: UUID):
+    """
+    Get user analytics including favorite location, total study time, average rating, streak, and study buddies.
+    """
+    # Convert UUID to string
+    user_id_str = str(user_id)
+    
+    # Step 1: Check if user exists first (before querying sessions)
+    try:
+        profile_response = supabase.table("user_profiles").select("id").eq("id", user_id_str).execute()
+        if not profile_response.data:
+            # User doesn't exist → 404 immediately
+            raise HTTPException(status_code=404, detail="User not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning(f"Error checking user profile: {e}")
+        # If profile check fails, continue (maybe user exists but not in profiles yet)
+    
+    # Step 2: Fetch sessions where user is in creators array (using Supabase array filter)
+    # PostgreSQL array contains operator: creators @> ARRAY['user_id']
+    try:
+        sessions_response = supabase.table("sessions")\
+            .select("*")\
+            .contains("creators", [user_id_str])\
+            .execute()
+        user_sessions = sessions_response.data
+        logger.info(f"Found {len(user_sessions)} sessions for user {user_id_str} using array filter")
+    except Exception as e:
+        # Fallback: If array filter doesn't work, fetch all and filter in Python
+        logger.warning(f"Array filter failed: {e}, falling back to Python filtering")
+        sessions_response = supabase.table("sessions").select("*").execute()
+        user_sessions = []
+        for session in sessions_response.data:
+            creators = session.get('creators')
+            if creators:
+                creators_list = list(creators) if not isinstance(creators, list) else creators
+                creators_str = [str(c) for c in creators_list]
+                if user_id_str in creators_str:
+                    user_sessions.append(session)
+        logger.info(f"Found {len(user_sessions)} sessions for user {user_id_str} using Python filter")
+    
+    # If no sessions, return empty analytics (user exists, just no data)
+    if not user_sessions:
+        return UserAnalyticsResponse(
+            favorite_location=None,
+            total_study_time=0,
+            average_rating=0.0,
+            streak=0,
+            study_buddies=[]
+        )
+    
+    # Step 2: Calculate favorite location (most frequent locationid)
+    location_counts = {}
+    for session in user_sessions:
+        locationid = session.get('locationid')
+        if locationid:
+            location_counts[locationid] = location_counts.get(locationid, 0) + 1
+    
+    favorite_location = max(location_counts, key=location_counts.get) if location_counts else None
+    
+    # Step 3: Calculate total study time (sum of durations)
+    total_study_time = sum(s.get('duration', 0) or 0 for s in user_sessions)
+    
+    # Step 4: Calculate average rating
+    ratings = [s.get('rating') for s in user_sessions if s.get('rating') is not None]
+    average_rating = sum(ratings) / len(ratings) if ratings else 0.0
+    
+    # Step 5: Calculate streak
+    # Extract unique dates from sessions (UTC)
+    unique_dates = set()
+    for session in user_sessions:
+        if session.get('inputtime'):
+            try:
+                if isinstance(session['inputtime'], str):
+                    input_time = datetime.fromisoformat(session['inputtime'].replace('Z', '+00:00'))
+                else:
+                    input_time = session['inputtime']
+                # Ensure timezone-aware and convert to UTC
+                if input_time.tzinfo is None:
+                    input_time = input_time.replace(tzinfo=timezone.utc)
+                else:
+                    input_time = input_time.astimezone(timezone.utc)
+                unique_dates.add(input_time.date())
+            except Exception as e:
+                logger.error(f"Error parsing date for streak: {e}")
+                continue
+    
+    if not unique_dates:
+        streak = 0
+    else:
+        # Sort dates descending
+        sorted_dates = sorted(unique_dates, reverse=True)
+        most_recent_date = sorted_dates[0]
+        today_utc = datetime.now(timezone.utc).date()
+        yesterday_utc = today_utc - timedelta(days=1)
+        
+        # Calculate streak (all in UTC)
+        if most_recent_date == today_utc:
+            # Most recent is today - count backwards from today
+            current_date = today_utc
+            streak = 0
+            for date in sorted_dates:
+                if date == current_date:
+                    streak += 1
+                    current_date -= timedelta(days=1)
+                else:
+                    break
+        elif most_recent_date == yesterday_utc:
+            # Most recent is yesterday - count backwards from yesterday
+            current_date = most_recent_date
+            streak = 0
+            # Check consecutive days backwards from yesterday
+            for date in sorted_dates:
+                if date == current_date:
+                    streak += 1
+                    current_date -= timedelta(days=1)
+                else:
+                    # Gap found - streak breaks
+                    break
+        else:
+            # Most recent is 2+ days ago - streak broken
+            streak = 0
+        
+        logger.info(f"Streak calculation: most_recent={most_recent_date}, today={today_utc}, streak={streak}, sorted_dates={sorted_dates}")
+    
+    # Step 6: Calculate study buddies (top 3)
+    all_buddies = []
+    for session in user_sessions:
+        creators = session.get('creators', [])
+        if creators:
+            for creator_id in creators:
+                if creator_id != user_id_str:  # Exclude self
+                    all_buddies.append(creator_id)
+    
+    # Count occurrences and get top 3
+    buddy_counts = Counter(all_buddies)
+    top_3_buddies = [buddy_id for buddy_id, _ in buddy_counts.most_common(3)]
+    
+    return UserAnalyticsResponse(
+        favorite_location=favorite_location,
+        total_study_time=total_study_time,
+        average_rating=round(average_rating, 2),
+        streak=streak,
+        study_buddies=top_3_buddies
+    )
 
 if __name__ == "__main__":
     import uvicorn

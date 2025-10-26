@@ -58,6 +58,14 @@ class LocationResponse(BaseModel):
     coordinate_x: Optional[float] = None
     coordinate_y: Optional[float] = None
 
+class UserAnalyticsResponse(BaseModel):
+    """Model for user analytics endpoint"""
+    favorite_location: Optional[str] = None  # locationid UUID
+    total_study_time: int  # Total minutes
+    average_rating: float  # Average rating
+    streak: int  # Consecutive days with sessions
+    study_buddies: List[str]  # Top 3 buddy UUIDs
+
 class CrowdednessBin(BaseModel):
     """Model for a single crowdedness time bin"""
     binname: str
