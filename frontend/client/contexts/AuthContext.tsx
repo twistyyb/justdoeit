@@ -39,6 +39,54 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const createUserProfileIfNeeded = async (userId: string, userData: User) => {
+    console.log('👤 createUserProfileIfNeeded called', { userId })
+    
+    try {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5002'
+      
+      // Try to fetch existing profile first
+      const fetchResponse = await fetch(`${apiBaseUrl}/user_profile/${userId}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      
+      if (fetchResponse.ok) {
+        console.log('✅ Profile already exists')
+        return await fetchResponse.json()
+      }
+      
+      if (fetchResponse.status === 404) {
+        console.log('👤 No profile found, creating one...')
+        
+        // Get name from user metadata or email
+        const name = userData.user_metadata?.name || userData.email?.split('@')[0] || 'User'
+        
+        const createResponse = await fetch(`${apiBaseUrl}/create_user_profile`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: userId, name })
+        })
+        
+        if (createResponse.ok) {
+          const result = await createResponse.json()
+          console.log('✅ Profile created successfully:', result)
+          // Fetch the newly created profile
+          const newProfile = await fetch(`${apiBaseUrl}/user_profile/${userId}`)
+          return newProfile.ok ? await newProfile.json() : null
+        } else {
+          console.error('❌ Failed to create profile:', await createResponse.json())
+          return null
+        }
+      }
+      
+      return null
+    } catch (error) {
+      console.error('❌ Error in createUserProfileIfNeeded:', error)
+      return null
+    }
+  }
+
   const fetchUserProfile = async (userId: string) => {
     console.log('👤 fetchUserProfile called with userId:', userId)
     
@@ -86,7 +134,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(session?.user ?? null)
       
       if (session?.user) {
-        const profile = await fetchUserProfile(session.user.id)
+        const profile = await createUserProfileIfNeeded(session.user.id, session.user)
         setUserProfile(profile)
       } else {
         setUserProfile(null)
@@ -103,7 +151,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(session?.user ?? null)
       
       if (session?.user) {
-        const profile = await fetchUserProfile(session.user.id)
+        const profile = await createUserProfileIfNeeded(session.user.id, session.user)
         setUserProfile(profile)
       } else {
         setUserProfile(null)
@@ -122,6 +170,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: window.location.origin,
+        data: {
+          name: name
+        }
+      }
     })
     
     console.log('📡 supabase.auth.signUp result:', { 
@@ -137,42 +191,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return { error }
     }
     
-    // If signup was successful and we have a user, create their profile
+    // If signup was successful and we have a user
     if (data.user) {
-      console.log('👤 User created successfully, creating profile...', { userId: data.user.id })
+      console.log('👤 User created successfully', { 
+        userId: data.user.id, 
+        emailConfirmedAt: data.user.email_confirmed_at,
+        userMetadata: data.user.user_metadata
+      })
       
-      // Create user profile using backend endpoint
-      console.log('👤 Creating user profile via backend endpoint...')
-      
-      try {
-        // Use the backend API URL - adjust this based on your backend setup
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5002'
-        const response = await fetch(`${apiBaseUrl}/create_user_profile`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            user_id: data.user.id,
-            name: name
+      // Only create profile if user is confirmed (or email confirmation is disabled)
+      // If email confirmation is required, profile will be created on first sign-in
+      if (data.user.email_confirmed_at || data.session) {
+        console.log('👤 User is confirmed, creating profile via backend endpoint...')
+        
+        try {
+          const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5002'
+          const response = await fetch(`${apiBaseUrl}/create_user_profile`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              user_id: data.user.id,
+              name: name
+            })
           })
-        })
-        
-        if (!response.ok) {
-          const errorData = await response.json()
-          console.error('❌ Backend profile creation failed:', errorData)
-          return { error: new Error(errorData.detail || 'Failed to create user profile') }
+          
+          if (!response.ok) {
+            const errorData = await response.json()
+            console.error('❌ Backend profile creation failed:', errorData)
+            // Don't fail the signup if profile creation fails
+            console.warn('⚠️ Profile will be created on first sign-in')
+          } else {
+            const result = await response.json()
+            console.log('✅ User profile created successfully via backend:', result)
+          }
+          
+        } catch (fetchError) {
+          console.error('❌ Error calling backend profile endpoint:', fetchError)
+          console.warn('⚠️ Profile will be created on first sign-in')
         }
-        
-        const result = await response.json()
-        console.log('✅ User profile created successfully via backend:', result)
-        
-      } catch (fetchError) {
-        console.error('❌ Error calling backend profile endpoint:', fetchError)
-        return { error: fetchError }
+      } else {
+        console.log('📧 Email confirmation required. Profile will be created after confirmation.')
       }
-      
-      console.log('✅ User profile created successfully')
     } else {
       console.warn('⚠️ No user data returned from signup')
     }
