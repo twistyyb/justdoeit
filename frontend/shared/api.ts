@@ -9,6 +9,8 @@ export interface Location {
   id: string;        // uuid
   name: string;
   shortloc: string;
+  summary?: string;
+  image?: string;
 }
 
 export interface CreateLocationRequest {
@@ -33,8 +35,6 @@ export interface CreateLocationResponse {
 export interface User {
   id: string;
   name: string;
-  email: string;
-  createdAt: string;
 }
 
 export interface SearchUsersRequest {

@@ -3,6 +3,7 @@ interface RecommendationCardProps {
   address: string;
   description: string;
   textColor: string;
+  imageUrl?: string;
 }
 
 export function RecommendationCard({
@@ -10,18 +11,37 @@ export function RecommendationCard({
   address,
   description,
   textColor,
+  imageUrl,
 }: RecommendationCardProps) {
   return (
-    <div className="mb-4">
+    <div className="mb-3">
       {/* Grouped transparent box */}
-      <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-2xl p-4">
-        <h3 className={`text-lg md:text-xl font-bold ${textColor} mb-2`}>
+      <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-2xl p-3">
+        <h3 className={`text-base md:text-lg font-bold ${textColor} mb-2`}>
           {spotName}
         </h3>
-        <div className={`text-sm font-semibold ${textColor} opacity-90 mb-2`}>
+        
+        {/* Image */}
+        {imageUrl && (
+          <div className="mb-2 flex justify-center">
+            <div className="rounded-lg overflow-hidden" style={{ aspectRatio: '16/9', height: '80px', width: 'auto' }}>
+              <img 
+                src={imageUrl} 
+                alt={spotName}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  // Hide image if it fails to load
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            </div>
+          </div>
+        )}
+        
+        <div className={`text-xs font-semibold ${textColor} opacity-90 mb-1.5`}>
           📍 {address}
         </div>
-        <div className={`text-sm ${textColor} opacity-80`}>
+        <div className={`text-xs ${textColor} opacity-80 line-clamp-2`}>
           {description}
         </div>
       </div>

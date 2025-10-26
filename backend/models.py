@@ -44,6 +44,8 @@ class LocationSummary(BaseModel):
     id: str
     name: str
     shortloc: str
+    summary: Optional[str] = None
+    image: Optional[str] = None
 
 class LocationsListResponse(BaseModel):
     """Model for locations list endpoint response"""
@@ -96,3 +98,12 @@ class UserProfileGetResponse(BaseModel):
     name: str
     created_at: str
     updated_at: str
+
+class UserSummary(BaseModel):
+    """Model for user summary (dropdown/list)"""
+    id: str
+    name: str
+
+class UsersListResponse(BaseModel):
+    """Model for users list endpoint response"""
+    users: List[UserSummary]
