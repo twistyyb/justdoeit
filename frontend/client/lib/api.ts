@@ -7,6 +7,7 @@ import {
   Location,
   CreateLocationRequest,
   CreateLocationResponse,
+  LocationDetailsResponse,
   User,
   SearchUsersRequest,
   Session,
@@ -78,6 +79,12 @@ class ApiClient {
     // Backend returns: { message: "Location created", data: [...] }
     // Extract the created location from the data array
     return response.data[0];
+  }
+
+  async getLocationDetails(locationId: string): Promise<LocationDetailsResponse> {
+    // Endpoint: GET /location_details/{location_id}
+    // Returns detailed location information including ratings and crowdedness data
+    return this.request<LocationDetailsResponse>(`/location_details/${locationId}`);
   }
 
   // === User Endpoints (if implemented) ===

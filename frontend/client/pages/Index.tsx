@@ -73,6 +73,7 @@ export default function Index() {
                 {preloadedLocations.slice(0, 3).map((location) => (
                   <RecommendationCard
                     key={location.id}
+                    locationId={location.id}
                     spotName={location.name}
                     address={location.shortloc}
                     description={location.summary || "No description available"}

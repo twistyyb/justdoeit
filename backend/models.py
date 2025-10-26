@@ -11,10 +11,10 @@ class SessionCreate(BaseModel):
     duration: Optional[int] = None
     rating: int = Field(..., ge=1, le=5)  # Required, 1-5
     cleanliness: int = Field(..., ge=1, le=5)  # Required, 1-5
+    crowdedness: int = Field(..., ge=1, le=5)  # Required, 1-5
     comment: Optional[str] = None
     outletavailability: Optional[bool] = None
     creators: Optional[List[str]] = None
-    crowdedness: Optional[int] = Field(None, ge=1, le=5)
 
 class SessionResponse(BaseModel):
     """Model for returning a session"""

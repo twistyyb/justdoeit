@@ -23,10 +23,18 @@ export function LogSessionModal({
 }: LogSessionModalProps) {
   const { user, userProfile } = useAuth();
   
-  // Get current time
+  // Get current time in Pacific Time
   const getCurrentDateTime = () => {
     const now = new Date();
-    return now.toISOString().slice(0, 16);
+    // Convert to Pacific Time
+    const pacificTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+    // Format for datetime-local input (YYYY-MM-DDTHH:MM)
+    const year = pacificTime.getFullYear();
+    const month = String(pacificTime.getMonth() + 1).padStart(2, '0');
+    const day = String(pacificTime.getDate()).padStart(2, '0');
+    const hours = String(pacificTime.getHours()).padStart(2, '0');
+    const minutes = String(pacificTime.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
   // No longer need internal preloading state - data comes from props
@@ -37,6 +45,7 @@ export function LogSessionModal({
   const [duration, setDuration] = useState<string>("60");
   const [rating, setRating] = useState<number>(3); // Default to 3 (backend requires 1-5)
   const [cleanliness, setCleanliness] = useState<number>(3);
+  const [crowdedness, setCrowdedness] = useState<number>(3);
   const [comment, setComment] = useState("");
   const [outletAvailability, setOutletAvailability] = useState(true);
   const [collaborators, setCollaborators] = useState<string[]>([]);
@@ -78,6 +87,12 @@ export function LogSessionModal({
       return;
     }
 
+    // Validate crowdedness (backend requires 1-5)
+    if (crowdedness < 1 || crowdedness > 5) {
+      alert("Please select a crowdedness rating (1-5)");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Prepare payload matching backend format
@@ -93,13 +108,36 @@ export function LogSessionModal({
       // Use current datetime if no custom time is set (when advanced options are hidden)
       const sessionTime = showAdvancedOptions ? inputTime : getCurrentDateTime();
       
+      // Convert the datetime-local input to Pacific Time ISO string
+      // Since we're always using Pacific Time, treat the input as Pacific Time
+      const pacificISOString = (() => {
+        // Parse the datetime-local input (YYYY-MM-DDTHH:MM format)
+        const [datePart, timePart] = sessionTime.split('T');
+        const [year, month, day] = datePart.split('-').map(Number);
+        const [hours, minutes] = timePart.split(':').map(Number);
+        
+        // Create a date string in Pacific Time format
+        const pacificDateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+        
+        // Create a date object and convert to Pacific Time
+        const tempDate = new Date(pacificDateString);
+        const pacificTime = new Date(tempDate.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+        
+        return pacificTime.toISOString();
+      })();
+      
+      // Log the input time in PST and the exact time being sent to Supabase
+      console.log("Input time (PST):", sessionTime);
+      console.log("Exact time sent to Supabase:", pacificISOString);
+      
       const payload = {
         creators: allCreators, // Current user + selected collaborators (all UUIDs)
         locationid: locationId,  // uuid from dropdown
-        inputtime: new Date(sessionTime).toISOString(), // ISO format with timezone
+        inputtime: pacificISOString, // Pacific Time in ISO format
         duration: parseInt(duration) || 0,  // int (mins), convert string to number
         rating,                  // double (1-5)
         cleanliness,            // int (1-5)
+        crowdedness,            // int (1-5)
         comment,                // str
         outletavailability: outletAvailability, // IMPORTANT: lowercase to match backend!
       };
@@ -121,6 +159,7 @@ export function LogSessionModal({
         setDuration("60");
         setRating(3); // Reset to valid default (1-5 range)
         setCleanliness(3);
+        setCrowdedness(3);
         setComment("");
         setOutletAvailability(true);
         setCollaborators([]);
@@ -244,6 +283,32 @@ export function LogSessionModal({
             </div>
           </div>
 
+          {/* Crowdedness */}
+          <div>
+            <label className="text-sm font-semibold text-gray-700 mb-3 block">
+              Crowdedness (1-5) *
+            </label>
+            <div className="flex gap-2 justify-center">
+              {[1, 2, 3, 4, 5].map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setCrowdedness(value)}
+                  className={`w-12 h-12 rounded-lg font-bold text-sm transition-all border-2 ${
+                    crowdedness === value
+                      ? "bg-orange-400 border-orange-500 text-white shadow-lg"
+                      : "bg-gray-100 border-gray-300 text-gray-900 hover:border-orange-300"
+                  }`}
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 mt-2 text-center">
+              1 = Very quiet, 5 = Very crowded
+            </p>
+          </div>
+
           {/* Outlet Availability */}
           <div>
             <label className="text-sm font-semibold text-gray-700 mb-3 block">
@@ -275,20 +340,6 @@ export function LogSessionModal({
             </div>
           </div>
 
-          {/* Comment */}
-          <div>
-            <label htmlFor="comment" className="text-sm font-semibold text-gray-700 mb-2 block">
-              Comments
-            </label>
-            <textarea
-              id="comment"
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Any notes about this study session..."
-              rows={4}
-              className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white placeholder:text-gray-400"
-            />
-          </div>
 
           {/* Advanced Options Toggle */}
           <div className="border-t border-gray-200 pt-2">
@@ -306,7 +357,7 @@ export function LogSessionModal({
             </button>
           </div>
 
-          {/* Advanced Options - Date & Time */}
+          {/* Advanced Options - Date & Time & Comments */}
           {showAdvancedOptions && (
             <div className="space-y-4 bg-gray-50 rounded-lg p-4">
               <div>
@@ -321,8 +372,23 @@ export function LogSessionModal({
                   className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-gray-900 font-semibold bg-white"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Leave this as default to use current time, or set a custom time for backlogging sessions
+                  Leave this as default to use current time, or set a custom time for backlogging sessions. All times are in Pacific Time.
                 </p>
+              </div>
+
+              {/* Comments */}
+              <div>
+                <label htmlFor="comment" className="text-sm font-semibold text-gray-700 mb-2 block">
+                  Comments
+                </label>
+                <textarea
+                  id="comment"
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="Any notes about this study session..."
+                  rows={4}
+                  className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white placeholder:text-gray-400"
+                />
               </div>
             </div>
           )}

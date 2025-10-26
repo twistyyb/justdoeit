@@ -32,5 +32,7 @@ create table public.sessions (
   comment text null,
   outletavailability boolean null,
   creators uuid[] null,
+  crowdedness smallint null,
+  created_at timestamp with time zone null default now(),
   constraint sessions_pkey primary key (id)
 ) TABLESPACE pg_default;

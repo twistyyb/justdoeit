@@ -30,6 +30,22 @@ export interface CreateLocationResponse {
   coordinate_y?: number;
 }
 
+// === Location Details Types ===
+
+export interface CrowdednessBin {
+  binname: string;  // e.g., "09:00-12:00"
+  avg: number;      // average crowdedness for this time period
+}
+
+export interface LocationDetailsResponse {
+  name: string;
+  coordinate_x: number;
+  coordinate_y: number;
+  average_rating: number;        // productivity rating
+  average_cleanliness: number;   // cleanliness rating
+  crowdedness_vs_time: Record<string, CrowdednessBin>; // time bins with crowdedness data
+}
+
 // === User Types ===
 
 export interface User {
@@ -96,7 +112,8 @@ export interface PaginatedResponse<T> {
 
 export type ApiEndpoint = 
   | "GET /location_names"
-  | "POST /location_names"
+  | "POST /create_location"
+  | "GET /location_details/:id"
   | "GET /users"
   | "GET /sessions"
   | "POST /create_session"
