@@ -59,7 +59,7 @@ function BusynessHistogram({ crowdednessData, textColor, showExpandedContent = t
   return (
     <div className="space-y-2">
       <div className={`text-xs font-semibold ${textColor} opacity-90`}>
-        Busyness by Time
+        Crowd Meter
       </div>
       <div className="flex items-end justify-between gap-1">
         {bins.map((bin, index) => {

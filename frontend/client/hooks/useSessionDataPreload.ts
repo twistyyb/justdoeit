@@ -5,7 +5,6 @@ import type { Location, User, Recommendation } from "../../shared/api";
 interface SessionDataPreloadState {
   locations: Location[];
   users: User[];
-  recommendations: Recommendation[];
   isLoading: boolean;
   error: string | null;
   isPreloaded: boolean;
@@ -19,7 +18,6 @@ export function useSessionDataPreload(userId?: string) {
   const [state, setState] = useState<SessionDataPreloadState>({
     locations: [],
     users: [],
-    recommendations: [],
     isLoading: false,
     error: null,
     isPreloaded: false,
@@ -33,26 +31,12 @@ export function useSessionDataPreload(userId?: string) {
       try {
         // Fetch locations and users in parallel
         const [locations, users] = await Promise.all([
-          apiClient.getLocations(),
+          apiClient.getLocations(userId),
           apiClient.getUsers()
-        ]);
-        
-        // Fetch recommendations separately if we have a userId
-        let recommendations: Recommendation[] = [];
-        if (userId) {
-          try {
-            const recommendationResponse = await apiClient.getRecommendations(userId);
-            recommendations = recommendationResponse.data?.recommendations || [];
-          } catch (error) {
-            console.warn("Failed to fetch recommendations:", error);
-            // Continue without recommendations if they fail
-          }
-        }
-        
+        ]);        
         console.log("✅ Session data preloaded successfully:", { 
           locationsCount: locations.length, 
-          usersCount: users.length,
-          recommendationsCount: recommendations.length
+          usersCount: users.length
         });
         
         // Add a small delay to ensure smooth transition
@@ -61,7 +45,6 @@ export function useSessionDataPreload(userId?: string) {
         setState({
           locations,
           users,
-          recommendations,
           isLoading: false,
           error: null,
           isPreloaded: true,

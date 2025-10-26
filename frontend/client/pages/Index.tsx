@@ -10,7 +10,7 @@ import { UserProfile } from "@/components/UserProfile";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { useTimeBasedGradient } from "@/hooks/useTimeBasedGradient";
 import { useSessionDataPreload } from "@/hooks/useSessionDataPreload";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import type { StudyBuddy } from "../../shared/api";
 
 // Type for user analytics response
@@ -49,15 +49,22 @@ export default function Index() {
   const { 
     locations: preloadedLocations, 
     users: preloadedUsers, 
-    recommendations: preloadedRecommendations,
     isLoading: isPreloadingData,
     error: preloadError,
     isPreloaded,
-    addLocation 
+    addLocation,
+    refreshData
   } = useSessionDataPreload(user?.id);
 
   const handleCardExpand = (locationId: string) => {
     setExpandedCardId(locationId);
+  };
+
+  const handleReloadRecommendations = async () => {
+    if (user?.id) {
+      console.log("🔄 Reloading AI recommendations...");
+      await refreshData();
+    }
   };
 
   // Fetch user analytics when user is available
@@ -196,7 +203,7 @@ export default function Index() {
 
       {/* Header with user profile - only show when authenticated */}
       {user && (
-        <div className="absolute bottom-4 left-4 md:left-8 z-20 flex justify-start">
+        <div className="absolute bottom-4 right-4 md:right-8 z-20 flex justify-end">
           <UserProfile />
         </div>
       )}
@@ -206,31 +213,43 @@ export default function Index() {
         {/* Left sidebar - Recommendations */}
         <div className="md:col-span-3 flex flex-col">
           <div className="flex flex-col bg-white/10 backdrop-blur-md border-2 border-white/20 rounded-3xl p-5">
-            <h2 className={`text-xl md:text-2xl font-bold ${textColor} mb-4`}>
-              Recommendations
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className={`text-xl md:text-2xl font-bold ${textColor}`}>
+                Recommendations
+              </h2>
+              {user && (
+                <button
+                  onClick={handleReloadRecommendations}
+                  disabled={isPreloadingData}
+                  className={`p-2 rounded-lg border border-white/30 ${textColor} transition-all hover:bg-white/10 hover:border-white/50 disabled:opacity-50 disabled:cursor-not-allowed`}
+                  title="Reload AI recommendations"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isPreloadingData ? 'animate-spin' : ''}`} />
+                </button>
+              )}
+            </div>
 
             {isPreloadingData ? (
               <div className={`text-sm ${textColor} opacity-80 text-center py-4`}>
                 Loading recommendations...
               </div>
-            ) : (preloadedRecommendations.length > 0 || preloadedLocations.length > 0) ? (
+            ) : (preloadedLocations.length > 0) ? (
               <>
                 {/* Show either recommendation cards or mini map, not both */}
                 {!showLocationMap ? (
                   <div className="flex flex-col gap-4 mb-4">
                     {/* Use AI recommendations if available, otherwise fall back to first 3 locations */}
-                    {(preloadedRecommendations.length > 0 ? preloadedRecommendations : preloadedLocations.slice(0, 3)).map((item) => {
+                    {(preloadedLocations.slice(0, 3)).map((item) => {
+                      console.log(item);
                       // Handle both recommendation objects and location objects
                       const locationId = 'location_id' in item ? item.location_id : item.id;
                       const spotName = 'location_name' in item ? item.location_name || 'Unknown Location' : item.name;
-                      const address = 'shortloc' in item ? item.shortloc || 'Unknown' : item.shortloc;
+                      const address = 'shortloc' in item ? item.shortloc || 'Unknown' : '';
                       const description = 'reasoning' in item ? item.reasoning : (item.summary || "No description available");
-                      const imageUrl = 'image' in item ? item.image : item.image;
+                      const imageUrl = 'image' in item ? item.image : '';
                       
                       return (
                         <RecommendationCard
-                          key={locationId}
                           locationId={locationId}
                           spotName={spotName}
                           address={address}

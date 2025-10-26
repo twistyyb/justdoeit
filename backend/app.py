@@ -136,19 +136,7 @@ async def get_user_profile(user_id: str):
         )
 
 
-@app.get("/location_names", response_model=LocationsListResponse)
-async def location_names():
-    """Get all location names, IDs, shortloc, summary, image, and coordinates for dropdown/selection"""
-    response = supabase.table("locations").select("id", "name", "shortloc", "summary", "image", "coordinate_x", "coordinate_y").execute()
-    
-    # Convert Supabase data to our Pydantic model
-    locations = [LocationSummary(**item) for item in response.data]
-    
-    # Debug: Log coordinate data
-    coords_count = sum(1 for loc in locations if loc.coordinate_x is not None and loc.coordinate_y is not None)
-    logger.info(f"📍 Returning {len(locations)} locations, {coords_count} have coordinates")
-    
-    return LocationsListResponse(locations=locations)
+
 
 
 @app.get("/locations_coordinate_status")
@@ -198,7 +186,7 @@ async def get_users():
 @app.get("/all_location_info")
 async def get_all_location_info():
     """Get all location info with detailed information for each location"""
-    # Get all locations from the database
+    # Get all locations from the database including image field
     response = supabase.table("locations").select("*").execute()
     locations = response.data
     
@@ -220,6 +208,7 @@ async def get_all_location_info():
             # Add to the mapping with additional basic fields
             location_data = location_details.model_dump()
             location_data["shortloc"] = location.get('shortloc', '')
+            location_data["image"] = location.get('image', '')
             location_details_map[location_id] = location_data
             
         except Exception as e:
@@ -229,6 +218,7 @@ async def get_all_location_info():
                 "name": location.get('name', ''),
                 "shortloc": location.get('shortloc', ''),
                 "summary": location.get('summary', ''),
+                "image": location.get('image', ''),
                 "coordinate_x": location.get('coordinate_x', 0.0),
                 "coordinate_y": location.get('coordinate_y', 0.0),
                 "average_productivity_rating": 0.0,
@@ -874,6 +864,18 @@ async def get_user_sessions_aggregate(user_id: UUID):
     
     return aggregate_response
 
+
+@app.get("/location_names", response_model=LocationsListResponse)
+async def location_names():
+    """Get all location names, IDs, shortloc, summary, image, and coordinates for dropdown/selection"""
+    response = supabase.table("locations").select("id", "name", "shortloc", "summary", "image", "coordinate_x", "coordinate_y").execute()
+    
+    # Convert Supabase data to our Pydantic model
+    locations = [LocationSummary(**item) for item in response.data]
+    
+    return LocationsListResponse(locations=locations)
+
+
 @app.get("/get_recommendation/{user_id}")
 async def get_recommendation(user_id: UUID):
     try:
@@ -901,36 +903,35 @@ async def get_recommendation(user_id: UUID):
         recommendation_data = json.loads(json_str)
         
         # Add location names and shortloc to each recommendation
+        recLocations = []
         for rec in recommendation_data.get("recommendations", []):
             location_id = rec.get("location_id")
+            summary = rec.get("reasoning")
             if location_id in location_info:
                 location_data = location_info[location_id]
-                rec["location_name"] = location_data.get("name", "Unknown Location")
-                rec["shortloc"] = location_data.get("shortloc", "Unknown")
+                name =location_data.get("name", "Unknown Location")
+                shortLoc= location_data.get("shortloc", "Unknown")
+                image = location_data.get("image", "Unknown")
+                x = location_data.get("coordinate_x", 0.0)
+                y = location_data.get("coordinate_y", 0.0)
+                recLocations.append(
+                    LocationSummary(
+                        id=location_id, name=name, shortloc=shortLoc, summary=summary, image=image, coordinate_x=x, coordinate_y=y
+                    )
+                )
             else:
                 # Fallback if location not found
                 rec["location_name"] = "Unknown Location"
                 rec["shortloc"] = "Unknown"
         
-        return {
-            "message": "Recommendation generated successfully",
-            "data": recommendation_data
-        }
+        return LocationsListResponse(locations=recLocations)
         
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse Claude response as JSON: {e}")
-        return {
-            "message": "Error parsing recommendation response",
-            "error": "Invalid JSON format from AI service",
-            "data": None
-        }
+        return LocationsListResponse(locations=[])
     except Exception as e:
         logger.error(f"Error generating recommendation for user {user_id}: {e}")
-        return {
-            "message": "Error generating recommendation",
-            "error": str(e),
-            "data": None
-        }
+        return LocationsListResponse(locations=[])
 
 
 if __name__ == "__main__":
