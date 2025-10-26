@@ -57,7 +57,7 @@ def get_study_recommendation_with_full_context(location_info, sessions_info):
         ]
     }
     
-    The reasoning must be a short, concise explanation of why the location was chosen.
+    The reasoning must be a short, concise explanation of why the location was chosen. 16 words or less. Must be 16 words or less. do not fabricate reasoning and only reference what portions match with user's preferences.
     The location_id must be the ID of the location in the database.
     Order the recommendations by rank, from 1 to 3.
     """
@@ -68,5 +68,4 @@ def get_study_recommendation_with_full_context(location_info, sessions_info):
     )
     
     print(f"claude response: {response.content[0].text}")
-    input("Press Enter to continue...")
     return response.content[0].text

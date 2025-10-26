@@ -49,11 +49,12 @@ export default function Index() {
   const { 
     locations: preloadedLocations, 
     users: preloadedUsers, 
+    recommendations: preloadedRecommendations,
     isLoading: isPreloadingData,
     error: preloadError,
     isPreloaded,
     addLocation 
-  } = useSessionDataPreload();
+  } = useSessionDataPreload(user?.id);
 
   const handleCardExpand = (locationId: string) => {
     setExpandedCardId(locationId);
@@ -213,24 +214,34 @@ export default function Index() {
               <div className={`text-sm ${textColor} opacity-80 text-center py-4`}>
                 Loading recommendations...
               </div>
-            ) : preloadedLocations.length > 0 ? (
+            ) : (preloadedRecommendations.length > 0 || preloadedLocations.length > 0) ? (
               <>
                 {/* Show either recommendation cards or mini map, not both */}
                 {!showLocationMap ? (
                   <div className="flex flex-col gap-4 mb-4">
-                    {preloadedLocations.slice(0, 3).map((location) => (
-                      <RecommendationCard
-                        key={location.id}
-                        locationId={location.id}
-                        spotName={location.name}
-                        address={location.shortloc}
-                        description={location.summary || "No description available"}
-                        textColor={textColor}
-                        imageUrl={location.image}
-                        isExpanded={expandedCardId === location.id}
-                        onExpand={handleCardExpand}
-                      />
-                    ))}
+                    {/* Use AI recommendations if available, otherwise fall back to first 3 locations */}
+                    {(preloadedRecommendations.length > 0 ? preloadedRecommendations : preloadedLocations.slice(0, 3)).map((item) => {
+                      // Handle both recommendation objects and location objects
+                      const locationId = 'location_id' in item ? item.location_id : item.id;
+                      const spotName = 'location_name' in item ? item.location_name || 'Unknown Location' : item.name;
+                      const address = 'shortloc' in item ? item.shortloc || 'Unknown' : item.shortloc;
+                      const description = 'reasoning' in item ? item.reasoning : (item.summary || "No description available");
+                      const imageUrl = 'image' in item ? item.image : item.image;
+                      
+                      return (
+                        <RecommendationCard
+                          key={locationId}
+                          locationId={locationId}
+                          spotName={spotName}
+                          address={address}
+                          description={description}
+                          textColor={textColor}
+                          imageUrl={imageUrl}
+                          isExpanded={expandedCardId === locationId}
+                          onExpand={handleCardExpand}
+                        />
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="mb-4 animate-in slide-in-from-top-4 duration-300">
@@ -291,7 +302,9 @@ export default function Index() {
                   isLoadingAnalytics ? (
                     "Loading your study stats..."
                   ) : userAnalytics ? (
-                    `You studied ${userAnalytics.streak} days in a row, ${Math.round(userAnalytics.total_study_time / 60)} hours total!`
+                    <>
+                      You studied {userAnalytics.streak} days in a <strong>row</strong>, {Math.round(userAnalytics.total_study_time / 60)} hours <strong>total</strong>!
+                    </>
                   ) : (
                     "Start logging sessions to see your stats!"
                   )

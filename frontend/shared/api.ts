@@ -144,6 +144,24 @@ export interface UserRecentSessionsResponse {
   sessions: SessionDetails[];
 }
 
+// === Recommendation Types ===
+
+export interface Recommendation {
+  rank: number;
+  location_id: string;
+  reasoning: string;
+  location_name?: string;
+  shortloc?: string;
+}
+
+export interface RecommendationResponse {
+  message: string;
+  data: {
+    recommendations: Recommendation[];
+  } | null;
+  error?: string;
+}
+
 // === API Utility Types ===
 
 export type ApiEndpoint = 
@@ -154,4 +172,5 @@ export type ApiEndpoint =
   | "GET /sessions"
   | "POST /create_session"
   | "GET /sessions/:id"
-  | "GET /user_sessions_time/:user_id";
+  | "GET /user_sessions_time/:user_id"
+  | "GET /get_recommendation/:user_id";

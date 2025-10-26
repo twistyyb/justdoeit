@@ -1,23 +1,25 @@
 import { useState, useEffect } from "react";
 import { apiClient } from "@/lib/api";
-import type { Location, User } from "../../shared/api";
+import type { Location, User, Recommendation } from "../../shared/api";
 
 interface SessionDataPreloadState {
   locations: Location[];
   users: User[];
+  recommendations: Recommendation[];
   isLoading: boolean;
   error: string | null;
   isPreloaded: boolean;
 }
 
 /**
- * Custom hook to preload session data (locations and users) for the LogSessionModal.
+ * Custom hook to preload session data (locations, users, and recommendations) for the LogSessionModal.
  * This hook fetches data as soon as the component mounts, making the modal feel instant.
  */
-export function useSessionDataPreload() {
+export function useSessionDataPreload(userId?: string) {
   const [state, setState] = useState<SessionDataPreloadState>({
     locations: [],
     users: [],
+    recommendations: [],
     isLoading: false,
     error: null,
     isPreloaded: false,
@@ -29,15 +31,28 @@ export function useSessionDataPreload() {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
       
       try {
-        // Fetch both locations and users in parallel for maximum efficiency
+        // Fetch locations and users in parallel
         const [locations, users] = await Promise.all([
           apiClient.getLocations(),
           apiClient.getUsers()
         ]);
         
+        // Fetch recommendations separately if we have a userId
+        let recommendations: Recommendation[] = [];
+        if (userId) {
+          try {
+            const recommendationResponse = await apiClient.getRecommendations(userId);
+            recommendations = recommendationResponse.data?.recommendations || [];
+          } catch (error) {
+            console.warn("Failed to fetch recommendations:", error);
+            // Continue without recommendations if they fail
+          }
+        }
+        
         console.log("✅ Session data preloaded successfully:", { 
           locationsCount: locations.length, 
-          usersCount: users.length 
+          usersCount: users.length,
+          recommendationsCount: recommendations.length
         });
         
         // Add a small delay to ensure smooth transition
@@ -46,6 +61,7 @@ export function useSessionDataPreload() {
         setState({
           locations,
           users,
+          recommendations,
           isLoading: false,
           error: null,
           isPreloaded: true,
@@ -65,7 +81,7 @@ export function useSessionDataPreload() {
     if (!state.isPreloaded && !state.isLoading) {
       preloadData();
     }
-  }, [state.isPreloaded, state.isLoading]);
+  }, [state.isPreloaded, state.isLoading, userId]);
 
   // Function to add a new location to the preloaded data
   const addLocation = (newLocation: Location) => {

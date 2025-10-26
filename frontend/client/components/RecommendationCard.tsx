@@ -32,11 +32,11 @@ function BusynessHistogram({ crowdednessData, textColor, showExpandedContent = t
   });
   
   if (!hasData) {
-    console.log('📊 No busyness data available');
+    console.log('📊 No crowd meter data available');
     return (
       <div className="space-y-2">
         <div className={`text-xs font-semibold ${textColor} opacity-90`}>
-          Busyness by Time
+          Crowd Meter
         </div>
         <div className={`text-xs ${textColor} opacity-70 text-center py-4`}>
           No data yet
