@@ -13,6 +13,7 @@ import {
   Session,
   CreateSessionRequest,
   CreateSessionResponse,
+  RecommendationResponse,
 } from "../../shared/api";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:5002";
@@ -131,6 +132,14 @@ class ApiClient {
       method: "POST",
       body: JSON.stringify(data),
     });
+  }
+
+  // === Recommendation Endpoints ===
+
+  async getRecommendations(userId: string): Promise<RecommendationResponse> {
+    // Endpoint: GET /get_recommendation/{user_id}
+    // Returns AI-generated study location recommendations with reasoning
+    return this.request<RecommendationResponse>(`/get_recommendation/${userId}`);
   }
 }
 
