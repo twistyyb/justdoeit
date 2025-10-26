@@ -5,6 +5,7 @@
   "duration": 30,
   "rating": 4,
   "cleanliness": 3,
+  "crowdedness": 2,
   "comment": "Great study environment with good lighting and comfortable seating. The main reading room was quiet and conducive to focused work. Great coffee!",
   "outletavailability": true
 }

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Any
 from datetime import datetime
 
 # Sessions Models
@@ -7,13 +7,14 @@ class SessionCreate(BaseModel):
     """Model for creating a study session"""
     # Auto-generated UUID we never pass in a session_id through the form we let supabase auto generate it
     locationid: str  # Required
-    inputtime: Optional[datetime] = None
+    inputtime: Optional[str] = Field(None, format="iso8601")
     duration: Optional[int] = None
-    rating: float = Field(..., ge=1, le=5)  # Required, 1-5
+    rating: int = Field(..., ge=1, le=5)  # Required, 1-5
     cleanliness: int = Field(..., ge=1, le=5)  # Required, 1-5
     comment: Optional[str] = None
     outletavailability: Optional[bool] = None
     creators: Optional[List[str]] = None
+    crowdedness: Optional[int] = Field(None, ge=1, le=5)
 
 class SessionResponse(BaseModel):
     """Model for returning a session"""
@@ -26,6 +27,7 @@ class SessionResponse(BaseModel):
     comment: Optional[str] = None
     outletavailability: Optional[bool] = None
     creators: Optional[List[str]] = None
+    crowdedness: Optional[int] = Field(None, ge=1, le=5)
 
 # Locations Models
 class LocationCreate(BaseModel):
