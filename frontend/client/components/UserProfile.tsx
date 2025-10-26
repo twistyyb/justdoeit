@@ -29,8 +29,8 @@ export const UserProfile: React.FC = () => {
   const avatarLetter = userProfile?.name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'
 
   return (
-    <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md border-2 border-white/20 rounded-full px-4 py-2">
-      <div className="flex items-center gap-2">
+    <div className="group flex items-center bg-white/10 backdrop-blur-md border-2 border-white/20 rounded-full py-2 transition-all duration-300 ease-in-out overflow-hidden">
+      <div className="flex items-center gap-2 px-4">
         <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
           <span className="text-white text-sm font-semibold">
             {avatarLetter}
@@ -40,14 +40,18 @@ export const UserProfile: React.FC = () => {
           {displayName}
         </span>
       </div>
-      <Button
-        onClick={handleSignOut}
-        variant="ghost"
-        size="sm"
-        className="text-white/80 hover:text-white hover:bg-white/10"
-      >
-        Sign Out
-      </Button>
+      <div className="w-0 group-hover:w-auto transition-all duration-300 ease-in-out overflow-hidden">
+        <div className="px-3">
+          <Button
+            onClick={handleSignOut}
+            variant="ghost"
+            size="sm"
+            className="text-white/80 hover:text-white hover:bg-white/10 whitespace-nowrap"
+          >
+            Sign Out
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }
