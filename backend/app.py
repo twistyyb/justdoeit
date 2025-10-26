@@ -2,8 +2,9 @@ from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from supabase import Client
 from typing import List
-from models import SessionCreate, SessionResponse, LocationCreate, LocationResponse, LocationSummary, LocationsListResponse
+from models import SessionCreate, SessionResponse, LocationCreate, LocationResponse, LocationSummary, LocationsListResponse, LocationDetailsResponse, CrowdednessBin
 import logging
+from uuid import UUID
 from startSupa import get_supabase
 
 
@@ -71,6 +72,102 @@ async def location_names():
     locations = [LocationSummary(**item) for item in response.data]
     
     return LocationsListResponse(locations=locations)
+
+@app.get("/location_details/{location_id}", response_model=LocationDetailsResponse)
+async def get_location_details(location_id: UUID):
+    """
+    Get detailed information about a specific location including:
+    - Basic info (name, coordinates)
+    - Average rating and cleanliness
+    - Crowdedness histogram (3-hour bins) abstracted as a dict of binname time and avg crowdedness
+    """
+    from datetime import datetime
+    
+    # Convert UUID to string for Supabase
+    location_id_str = str(location_id)
+    
+    # Step 1: Fetch location details
+    location_response = supabase.table("locations").select("*").eq("id", location_id_str).execute()
+    
+    if not location_response.data:
+        raise HTTPException(status_code=404, detail="Location not found")
+    
+    location = location_response.data[0]
+    
+    # Step 2: Fetch all sessions for this location
+    sessions_response = supabase.table("sessions").select("*").eq("locationid", location_id_str).execute()
+    sessions = sessions_response.data
+    
+    # Step 3: Calculate average rating (productivity)
+    if sessions:
+        avg_rating = sum(s.get('rating', 0) for s in sessions) / len(sessions)
+    else:
+        avg_rating = 0.0
+    
+    # Step 4: Calculate average cleanliness
+    cleanliness_scores = [s.get('cleanliness') for s in sessions if s.get('cleanliness') is not None]
+    if cleanliness_scores:
+        avg_cleanliness = sum(cleanliness_scores) / len(cleanliness_scores)
+    else:
+        avg_cleanliness = 0.0
+    
+    # Step 5: Create crowdedness histogram
+    # Initialize bins for 8 time periods (3 hours each)
+    bins = {i: [] for i in range(8)}
+    bin_names = [
+        "00:00-03:00", "03:00-06:00", "06:00-09:00", "09:00-12:00",
+        "12:00-15:00", "15:00-18:00", "18:00-21:00", "21:00-24:00"
+    ]
+    
+    # Step 6: Group sessions by time bin
+    for session in sessions:
+        if not session.get('inputtime'):
+            continue
+            
+        # Parse timestamp (handles ISO format with timezone)
+        try:
+            if isinstance(session['inputtime'], str):
+                input_time = datetime.fromisoformat(session['inputtime'].replace('Z', '+00:00'))
+            else:
+                input_time = session['inputtime']
+            
+            # Get hour (0-23)
+            hour = input_time.hour
+            
+            # Determine which 3-hour bin (0-7)
+            bin_num = hour // 3
+            
+            # Add crowdedness to that bin (if exists)
+            if session.get('crowdedness') is not None:
+                bins[bin_num].append(session['crowdedness'])
+        except Exception as e:
+            logger.error(f"Error parsing timestamp: {e}")
+            continue
+    
+    # Step 7: Calculate average crowdedness per bin
+    crowdedness_data = {}
+    for bin_num in range(8):
+        if bins[bin_num]:
+            avg = sum(bins[bin_num]) / len(bins[bin_num])
+        else:
+            avg = 0.0
+        
+        # Create CrowdednessBin object for validation
+        crowdedness_data[str(bin_num)] = CrowdednessBin(
+            binname=bin_names[bin_num],
+            avg=round(avg, 2)
+        )
+    
+    # Step 8: Return combined response
+    return LocationDetailsResponse(
+        name=location['name'],
+        coordinate_x=location.get('coordinate_x', 0.0),
+        coordinate_y=location.get('coordinate_y', 0.0),
+        average_rating=round(avg_rating, 2),
+        average_cleanliness=round(avg_cleanliness, 2),
+        crowdedness_vs_time=crowdedness_data
+        
+    )
 
 if __name__ == "__main__":
     import uvicorn

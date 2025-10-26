@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Dict
 from datetime import datetime
 
 # Sessions Models
@@ -58,3 +58,16 @@ class LocationResponse(BaseModel):
     coordinate_x: Optional[float] = None
     coordinate_y: Optional[float] = None
 
+class CrowdednessBin(BaseModel):
+    """Model for a single crowdedness time bin"""
+    binname: str
+    avg: float
+
+class LocationDetailsResponse(BaseModel):
+    """Model for location details endpoint"""
+    name: str
+    coordinate_x: float
+    coordinate_y: float
+    average_rating: float
+    average_cleanliness: float
+    crowdedness_vs_time: Dict[str, CrowdednessBin]
