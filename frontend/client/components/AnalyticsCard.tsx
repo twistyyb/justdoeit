@@ -3,15 +3,16 @@ interface AnalyticsCardProps {
   subtitle?: string;
   content?: React.ReactNode;
   children?: React.ReactNode;
+  textColor: string;
 }
 
-export function AnalyticsCard({ title, subtitle, content, children }: AnalyticsCardProps) {
+export function AnalyticsCard({ title, subtitle, content, children, textColor }: AnalyticsCardProps) {
   return (
-    <div className="bg-orange-200/70 backdrop-blur-sm border-2 border-orange-400 rounded-2xl p-4 mb-4">
-      <div className="text-sm font-bold text-gray-900 mb-2">{title}</div>
-      {subtitle && <div className="text-xs text-gray-700 mb-3">{subtitle}</div>}
-      {content && <div className="text-xs text-gray-700">{content}</div>}
-      {children && <div className="text-xs text-gray-700">{children}</div>}
+    <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-2xl p-4 mb-4">
+      <div className={`text-sm font-bold ${textColor} mb-2`}>{title}</div>
+      {subtitle && <div className={`text-xs ${textColor} opacity-80 mb-3`}>{subtitle}</div>}
+      {content && <div className={`text-xs ${textColor} opacity-90`}>{content}</div>}
+      {children && <div className={`text-xs ${textColor} opacity-90`}>{children}</div>}
     </div>
   );
 }
