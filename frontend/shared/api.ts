@@ -103,6 +103,24 @@ export interface UserSessionsTimeResponse {
   sessions: SessionTimeDuration[];
 }
 
+export interface SessionDetails {
+  id: string;
+  locationid: string;
+  location_name: string;
+  inputtime: string | null;
+  duration: number | null;
+  rating: number;
+  cleanliness: number;
+  comment: string | null;
+  outletavailability: boolean | null;
+  creators: string[] | null;
+  crowdedness: number | null;
+}
+
+export interface UserRecentSessionsResponse {
+  sessions: SessionDetails[];
+}
+
 // === API Utility Types ===
 
 export type ApiEndpoint = 

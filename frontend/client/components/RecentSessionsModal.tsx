@@ -1,57 +1,12 @@
-import { X, Zap, Sparkles, Plug } from "lucide-react";
+import { useEffect, useState } from "react";
+import { X, Plug } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import type { SessionDetails, UserRecentSessionsResponse } from "shared/api";
 
 interface RecentSessionsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
-
-interface SessionData {
-  id: string;
-  location: string;
-  dateTime: string;
-  duration: number;
-  productivityRating: number;
-  cleanliness: number;
-  comment: string;
-  outletAvailability: boolean;
-  collaborators: string[];
-}
-
-const sessions: SessionData[] = [
-  {
-    id: "1",
-    location: "Main stacks UC Berkeley",
-    dateTime: "2025-10-25 14:30",
-    duration: 120,
-    productivityRating: 4,
-    cleanliness: 4,
-    comment: "Great study spot, quiet and peaceful. Perfect for deep focus.",
-    outletAvailability: true,
-    collaborators: ["Bryan Chen", "Sarah Johnson"],
-  },
-  {
-    id: "2",
-    location: "Café Saint Frank SF",
-    dateTime: "2025-10-24 09:15",
-    duration: 90,
-    productivityRating: 3,
-    cleanliness: 3,
-    comment: "Busy time, but good coffee. Some background noise.",
-    outletAvailability: false,
-    collaborators: ["Andrew Smith"],
-  },
-  {
-    id: "3",
-    location: "Prince Street Pizza NYC",
-    dateTime: "2025-10-23 16:45",
-    duration: 75,
-    productivityRating: 2,
-    cleanliness: 3,
-    comment: "Casual environment, lots of distractions. Good for informal meetings.",
-    outletAvailability: true,
-    collaborators: ["Mike Davis"],
-  },
-];
 
 const getRatingColor = (rating: number) => {
   if (rating >= 4) return "bg-green-100 text-green-800";
@@ -60,6 +15,63 @@ const getRatingColor = (rating: number) => {
 };
 
 export function RecentSessionsModal({ isOpen, onClose }: RecentSessionsModalProps) {
+  const { user } = useAuth();
+  const [sessions, setSessions] = useState<SessionDetails[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [userNames, setUserNames] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    if (!isOpen || !user?.id) return;
+
+    const fetchSessions = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch(
+          `http://127.0.0.1:5002/user_recent_sessions/${user.id}?limit=10`
+        );
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch sessions: ${response.status}`);
+        }
+        
+        const data: UserRecentSessionsResponse = await response.json();
+        setSessions(data.sessions);
+        
+        // Fetch user names for all creators
+        const allCreatorIds = new Set<string>();
+        data.sessions.forEach(session => {
+          if (session.creators) {
+            session.creators.forEach(id => allCreatorIds.add(id));
+          }
+        });
+        
+        // Fetch names for all unique creators
+        const namesMap = new Map<string, string>();
+        for (const creatorId of allCreatorIds) {
+          try {
+            const userResponse = await fetch(
+              `http://127.0.0.1:5002/user_profile/${creatorId}`
+            );
+            if (userResponse.ok) {
+              const userData = await userResponse.json();
+              namesMap.set(creatorId, userData.name || 'Unknown User');
+            }
+          } catch (error) {
+            console.error(`Error fetching user ${creatorId}:`, error);
+            namesMap.set(creatorId, 'Unknown User');
+          }
+        }
+        setUserNames(namesMap);
+      } catch (error) {
+        console.error("Error fetching recent sessions:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSessions();
+  }, [isOpen, user?.id]);
+
   if (!isOpen) return null;
 
   return (
@@ -78,89 +90,123 @@ export function RecentSessionsModal({ isOpen, onClose }: RecentSessionsModalProp
 
         {/* Sessions list */}
         <div className="overflow-y-auto flex-1 p-6 space-y-4">
-          {sessions.map((session) => (
-            <div
-              key={session.id}
-              className="border-2 border-gray-300 rounded-2xl p-5 hover:border-orange-300 hover:bg-orange-50/30 transition-colors"
-            >
-              {/* Location & Date/Time */}
-              <div className="mb-4">
-                <h3 className="font-bold text-gray-900 text-lg mb-1">
-                  {session.location}
-                </h3>
-                <p className="text-sm text-gray-600">📅 {session.dateTime}</p>
-              </div>
-
-              {/* Duration */}
-              <div className="mb-4">
-                <p className="text-sm text-gray-700">
-                  <span className="font-semibold">Duration:</span> {session.duration} minutes
-                </p>
-              </div>
-
-              {/* Ratings */}
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div>
-                  <p className="text-xs font-semibold text-gray-600 mb-1">
-                    Productivity Rating
-                  </p>
-                  <div className={`inline-block px-3 py-1 rounded-lg font-bold text-sm ${getRatingColor(session.productivityRating)}`}>
-                    {session.productivityRating}/5
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-600 mb-1">
-                    Cleanliness
-                  </p>
-                  <div className={`inline-block px-3 py-1 rounded-lg font-bold text-sm ${getRatingColor(session.cleanliness)}`}>
-                    {session.cleanliness}/5
-                  </div>
-                </div>
-              </div>
-
-              {/* Outlet Availability */}
-              <div className="mb-4">
-                <div className="flex items-center gap-2">
-                  <Plug className="w-4 h-4 text-gray-600" />
-                  <span className="text-sm text-gray-700">
-                    <span className="font-semibold">Outlets:</span>{" "}
-                    {session.outletAvailability ? (
-                      <span className="text-green-700 font-semibold">Available</span>
-                    ) : (
-                      <span className="text-red-700 font-semibold">Not Available</span>
-                    )}
-                  </span>
-                </div>
-              </div>
-
-              {/* Comment */}
-              {session.comment && (
-                <div className="mb-4">
-                  <p className="text-xs font-semibold text-gray-600 mb-1">Comment:</p>
-                  <p className="text-sm text-gray-700 italic">{session.comment}</p>
-                </div>
-              )}
-
-              {/* Collaborators */}
-              {session.collaborators.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-gray-600 mb-2">
-                    Studied with:
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {session.collaborators.map((collaborator, idx) => (
-                      <span
-                        key={idx}
-                        className="bg-orange-200 text-orange-900 px-3 py-1 rounded-lg text-xs font-semibold"
-                      >
-                        {collaborator}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
+          {isLoading ? (
+            <div className="text-center py-8 text-gray-600">
+              Loading sessions...
             </div>
-          ))}
+          ) : sessions.length === 0 ? (
+            <div className="text-center py-8 text-gray-600">
+              No sessions found. Start logging your study sessions!
+            </div>
+          ) : (
+            sessions.map((session) => {
+              // Format date/time
+              const dateTime = session.inputtime 
+                ? new Date(session.inputtime).toLocaleString('en-US', {
+                    timeZone: 'America/Los_Angeles',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                : 'N/A';
+              
+              // Get collaborator names (exclude current user)
+              const collaboratorNames = session.creators
+                ?.filter(id => id !== user?.id)
+                .map(id => userNames.get(id) || 'Unknown User')
+                .filter(Boolean) || [];
+              
+              return (
+                <div
+                  key={session.id}
+                  className="border-2 border-gray-300 rounded-2xl p-5 hover:border-orange-300 hover:bg-orange-50/30 transition-colors"
+                >
+                  {/* Location & Date/Time */}
+                  <div className="mb-4">
+                    <h3 className="font-bold text-gray-900 text-lg mb-1">
+                      {session.location_name}
+                    </h3>
+                    <p className="text-sm text-gray-600">📅 {dateTime}</p>
+                  </div>
+
+                  {/* Duration */}
+                  {session.duration && (
+                    <div className="mb-4">
+                      <p className="text-sm text-gray-700">
+                        <span className="font-semibold">Duration:</span> {session.duration} minutes
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Ratings */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div>
+                      <p className="text-xs font-semibold text-gray-600 mb-1">
+                        Productivity Rating
+                      </p>
+                      <div className={`inline-block px-3 py-1 rounded-lg font-bold text-sm ${getRatingColor(session.rating)}`}>
+                        {session.rating}/5
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-gray-600 mb-1">
+                        Cleanliness
+                      </p>
+                      <div className={`inline-block px-3 py-1 rounded-lg font-bold text-sm ${getRatingColor(session.cleanliness)}`}>
+                        {session.cleanliness}/5
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Outlet Availability */}
+                  {session.outletavailability !== null && (
+                    <div className="mb-4">
+                      <div className="flex items-center gap-2">
+                        <Plug className="w-4 h-4 text-gray-600" />
+                        <span className="text-sm text-gray-700">
+                          <span className="font-semibold">Outlets:</span>{" "}
+                          {session.outletavailability ? (
+                            <span className="text-green-700 font-semibold">Available</span>
+                          ) : (
+                            <span className="text-red-700 font-semibold">Not Available</span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Comment */}
+                  {session.comment && (
+                    <div className="mb-4">
+                      <p className="text-xs font-semibold text-gray-600 mb-1">Comment:</p>
+                      <p className="text-sm text-gray-700 italic">{session.comment}</p>
+                    </div>
+                  )}
+
+                  {/* Collaborators */}
+                  {collaboratorNames.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-600 mb-2">
+                        Studied with:
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {collaboratorNames.map((name, idx) => (
+                          <span
+                            key={idx}
+                            className="bg-orange-200 text-orange-900 px-3 py-1 rounded-lg text-xs font-semibold"
+                          >
+                            {name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
 
         {/* Close button */}

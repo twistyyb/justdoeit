@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from supabase import Client
 from typing import List
-from models import SessionCreate, SessionResponse, LocationCreate, LocationResponse, LocationSummary, LocationsListResponse, LocationDetailsResponse, CrowdednessBin, UserSummary, UsersListResponse, UserAnalyticsResponse, SessionTimeDuration, UserSessionsTimeResponse
+from models import SessionCreate, SessionResponse, LocationCreate, LocationResponse, LocationSummary, LocationsListResponse, LocationDetailsResponse, CrowdednessBin, UserSummary, UsersListResponse, UserAnalyticsResponse, SessionTimeDuration, UserSessionsTimeResponse, SessionDetails, UserRecentSessionsResponse
 from pydantic import BaseModel
 import logging
 from uuid import UUID
@@ -477,6 +477,98 @@ async def get_user_sessions_time(user_id: UUID):
         ))
     
     return UserSessionsTimeResponse(sessions=session_objects)
+
+
+@app.get("/user_recent_sessions/{user_id}", response_model=UserRecentSessionsResponse)
+async def get_user_recent_sessions(user_id: UUID, limit: int = 10):
+    """
+    Get recent study sessions for a user with full details including location names.
+    Returns sessions ordered by input time (most recent first).
+    """
+    user_id_str = str(user_id)
+    
+    # Step 1: Check if user exists
+    try:
+        profile_response = supabase.table("user_profiles").select("id").eq("id", user_id_str).execute()
+        if not profile_response.data:
+            raise HTTPException(status_code=404, detail="User not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning(f"Error checking user profile: {e}")
+    
+    # Step 2: Fetch sessions where user is in creators array
+    try:
+        sessions_response = supabase.table("sessions")\
+            .select("*")\
+            .contains("creators", [user_id_str])\
+            .order("inputtime", desc=True)\
+            .limit(limit)\
+            .execute()
+        user_sessions = sessions_response.data
+        logger.info(f"Found {len(user_sessions)} recent sessions for user {user_id_str}")
+    except Exception as e:
+        # Fallback: If array filter doesn't work, fetch all and filter in Python
+        logger.warning(f"Array filter failed: {e}, falling back to Python filtering")
+        sessions_response = supabase.table("sessions").select("*").execute()
+        user_sessions = []
+        for session in sessions_response.data:
+            creators = session.get('creators')
+            if creators:
+                creators_list = list(creators) if not isinstance(creators, list) else creators
+                creators_str = [str(c) for c in creators_list]
+                if user_id_str in creators_str:
+                    user_sessions.append(session)
+        
+        # Sort by inputtime descending and limit
+        user_sessions.sort(key=lambda s: s.get('inputtime', ''), reverse=True)
+        user_sessions = user_sessions[:limit]
+        logger.info(f"Found {len(user_sessions)} recent sessions for user {user_id_str} using Python filter")
+    
+    # Step 3: Fetch location names for all sessions
+    location_names = {}
+    location_ids = set(s.get('locationid') for s in user_sessions if s.get('locationid'))
+    
+    for location_id in location_ids:
+        try:
+            location_response = supabase.table("locations").select("id", "name").eq("id", location_id).execute()
+            if location_response.data:
+                location_names[location_id] = location_response.data[0].get('name', 'Unknown Location')
+        except Exception as e:
+            logger.error(f"Error fetching location {location_id}: {e}")
+            location_names[location_id] = 'Unknown Location'
+    
+    # Step 4: Convert to SessionDetails models
+    session_details = []
+    for session in user_sessions:
+        # Parse inputtime if it's a string
+        inputtime = session.get('inputtime')
+        if inputtime and isinstance(inputtime, str):
+            try:
+                inputtime = datetime.fromisoformat(inputtime.replace('Z', '+00:00'))
+            except Exception as e:
+                logger.error(f"Error parsing inputtime: {e}")
+                inputtime = None
+        
+        location_id = session.get('locationid', '')
+        location_name = location_names.get(location_id, 'Unknown Location')
+        
+        session_details.append(SessionDetails(
+            id=session.get('id', ''),
+            locationid=location_id,
+            location_name=location_name,
+            inputtime=inputtime,
+            duration=session.get('duration'),
+            rating=session.get('rating', 0),
+            cleanliness=session.get('cleanliness', 0),
+            comment=session.get('comment'),
+            outletavailability=session.get('outletavailability'),
+            creators=session.get('creators'),
+            crowdedness=session.get('crowdedness')
+        ))
+    
+    return UserRecentSessionsResponse(sessions=session_details)
+
 
 if __name__ == "__main__":
     import uvicorn
