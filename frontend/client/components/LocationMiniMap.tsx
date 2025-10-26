@@ -106,12 +106,6 @@ export function LocationMiniMap({ locations, textColor }: LocationMiniMapProps) 
               {/* Mini-message board popup */}
               <Popup className="custom-popup" maxWidth={500} minWidth={400} autoPan={true}>
                 <div className="popup-content">
-                  {/* Left side: Emoji badge */}
-                  <div className="emoji-badge">
-                    📍
-                  </div>
-                  
-                  {/* Right side: Content */}
                   <div className="popup-text">
                     <h3 className="location-name">
                       {location.name}
@@ -155,7 +149,8 @@ export function LocationMiniMap({ locations, textColor }: LocationMiniMapProps) 
         
         .leaflet-popup-content {
           margin: 0;
-          width: 100% !important;
+          width: 200px !important;
+          max-width: 200px !important;
         }
         
         .leaflet-popup-tip {
@@ -166,8 +161,12 @@ export function LocationMiniMap({ locations, textColor }: LocationMiniMapProps) 
         .popup-content {
           display: flex;
           align-items: flex-start;
-          gap: 16px;
-          padding: 16px;
+          gap: 12px;
+          padding: 12px;
+          width: 200px;
+          max-height: 140px;
+          overflow-wrap: break-word;
+          word-wrap: break-word;
         }
         
         /* Emoji badge - left side */
@@ -175,10 +174,10 @@ export function LocationMiniMap({ locations, textColor }: LocationMiniMapProps) 
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 52px;
-          height: 52px;
-          min-width: 52px;
-          font-size: 26px;
+          width: 44px;
+          height: 44px;
+          min-width: 44px;
+          font-size: 22px;
           background: linear-gradient(135deg, #fb923c 0%, #ec4899 100%);
           border-radius: 50%;
           box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
@@ -188,35 +187,49 @@ export function LocationMiniMap({ locations, textColor }: LocationMiniMapProps) 
         .popup-text {
           flex: 1;
           min-width: 0;
+          overflow-wrap: break-word;
+          word-wrap: break-word;
+          width: 0; /* Force text to respect container width */
         }
         
         /* Location name */
         .location-name {
-          font-size: 18px;
+          font-size: 15px;
           font-weight: 700;
           color: #111827;
-          margin: 0 0 4px 0;
+          margin: 0 0 3px 0;
           line-height: 1.2;
           letter-spacing: -0.01em;
+          overflow-wrap: break-word;
+          word-wrap: break-word;
+          word-break: break-word;
         }
         
         /* Location address */
         .location-address {
-          font-size: 13px;
+          font-size: 11px;
           font-weight: 500;
           color: #6b7280;
-          margin: 0 0 8px 0;
-          line-height: 1.2;
+          margin: 0 0 6px 0;
+          line-height: 1.3;
+          overflow-wrap: break-word;
+          word-wrap: break-word;
+          word-break: break-word;
         }
         
         /* Location summary */
         .location-summary {
-          font-size: 13px;
+          font-size: 11px;
           color: #374151;
           line-height: 1.4;
           margin: 0;
-          padding-top: 8px;
+          padding-top: 6px;
           border-top: 1px solid rgba(0,0,0,0.08);
+          overflow-wrap: break-word;
+          word-wrap: break-word;
+          word-break: break-word;
+          max-height: 50px;
+          overflow: hidden;
         }
         
         /* Map marker styling */
