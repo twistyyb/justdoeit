@@ -10,25 +10,11 @@ import { UserProfile } from "@/components/UserProfile";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { useTimeBasedGradient } from "@/hooks/useTimeBasedGradient";
 import { useSessionDataPreload } from "@/hooks/useSessionDataPreload";
-import { ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
+import { useRecommendations } from "@/hooks/useRecommendations";
+import { ChevronDown, ChevronUp, RefreshCw, Clock, Sparkles } from "lucide-react";
 import type { StudyBuddy } from "../../shared/api";
 
-// Type for user analytics response
-interface MostProductiveLocation {
-  location_id: string | null;
-  location_name: string | null;
-  shortloc: string | null;
-  average_rating: number;
-}
-
-interface UserAnalytics {
-  favorite_location: string | null;
-  most_productive_location: MostProductiveLocation | null;
-  total_study_time: number;
-  average_rating: number;
-  streak: number;
-  study_buddies: StudyBuddy[];
-}
+// Types are now defined in the useSessionDataPreload hook
 
 export default function Index() {
   const [showLogModal, setShowLogModal] = useState(false);
@@ -36,156 +22,52 @@ export default function Index() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showLocationMap, setShowLocationMap] = useState(false);
   const [expandedCardId, setExpandedCardId] = useState<string>('');
-  const [userAnalytics, setUserAnalytics] = useState<UserAnalytics | null>(null);
-  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
-  const [studyBuddyData, setStudyBuddyData] = useState<{name: string, sessionCount: number}[]>([]);
-  const [favoriteLocationName, setFavoriteLocationName] = useState<string | null>(null);
-  const [mostProductiveLocationData, setMostProductiveLocationData] = useState<{image: string, name: string, shortloc: string} | null>(null);
-  const [mostVisitedLocationData, setMostVisitedLocationData] = useState<{image: string, name: string, shortloc: string} | null>(null);
   const { user, userProfile } = useAuth();
   const { gradient, name, textColor } = useTimeBasedGradient();
   
-  // Preload session data as soon as the page loads
+  // Preload session data and analytics
   const { 
     locations: preloadedLocations, 
     users: preloadedUsers, 
+    userAnalytics,
+    studyBuddyData,
+    favoriteLocationName,
+    mostProductiveLocationData,
+    mostVisitedLocationData,
     isLoading: isPreloadingData,
     error: preloadError,
     isPreloaded,
-    addLocation,
-    refreshData
+    addLocation
   } = useSessionDataPreload(user?.id);
+
+  // Separate recommendations system
+  const {
+    recommendations,
+    isLoading: isGeneratingRecommendations,
+    error: recommendationsError,
+    hasGenerated,
+    generateRecommendations,
+    refreshRecommendations,
+    hasValidCache
+  } = useRecommendations(user?.id);
 
   const handleCardExpand = (locationId: string) => {
     setExpandedCardId(locationId);
   };
 
-  const handleReloadRecommendations = async () => {
+  const handleGenerateRecommendations = async () => {
     if (user?.id) {
-      console.log("🔄 Reloading AI recommendations...");
-      await refreshData();
+      if (hasGenerated) {
+        console.log("🔄 Refreshing AI recommendations...");
+        await refreshRecommendations();
+      } else {
+        console.log("✨ Generating AI recommendations...");
+        await generateRecommendations();
+      }
     }
   };
 
-  // Fetch user analytics when user is available
-  useEffect(() => {
-    if (!user?.id) {
-      setUserAnalytics(null);
-      return;
-    }
-
-    const fetchUserAnalytics = async () => {
-      setIsLoadingAnalytics(true);
-      try {
-        const response = await fetch(
-          `http://127.0.0.1:5002/user_analytics/${user.id}`
-        );
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch analytics: ${response.status}`);
-        }
-        
-        const data: UserAnalytics = await response.json();
-        setUserAnalytics(data);
-
-        // Fetch study buddy names and session counts
-        if (data.study_buddies.length > 0) {
-          const buddyData: {name: string, sessionCount: number}[] = [];
-          for (const buddy of data.study_buddies) {
-            try {
-              const buddyResponse = await fetch(
-                `http://127.0.0.1:5002/user_profile/${buddy.user_id}`
-              );
-              if (buddyResponse.ok) {
-                const buddyProfile = await buddyResponse.json();
-                buddyData.push({
-                  name: buddyProfile.name || 'Unknown User',
-                  sessionCount: buddy.session_count
-                });
-              }
-            } catch (error) {
-              console.error(`Error fetching buddy ${buddy.user_id}:`, error);
-              buddyData.push({
-                name: 'Unknown User',
-                sessionCount: buddy.session_count
-              });
-            }
-          }
-          setStudyBuddyData(buddyData);
-        }
-
-        // Fetch most productive location image using location_id
-        if (data.most_productive_location?.location_id) {
-          try {
-            // Get all locations with images from location_names endpoint
-            const locationsResponse = await fetch(
-              `http://127.0.0.1:5002/location_names`
-            );
-            if (locationsResponse.ok) {
-              const locationsData = await locationsResponse.json();
-              const location = locationsData.locations.find(
-                (loc: any) => loc.id === data.most_productive_location?.location_id
-              );
-              if (location) {
-                setMostProductiveLocationData({
-                  image: location.image || '',
-                  name: data.most_productive_location.location_name || '',
-                  shortloc: data.most_productive_location.shortloc || ''
-                });
-              }
-            }
-          } catch (error) {
-            console.error(`Error fetching most productive location:`, error);
-          }
-        }
-
-        // Fetch favorite location image using favorite_location (which is location_id)
-        if (data.favorite_location) {
-          try {
-            // Get location details to get the name
-            const locationResponse = await fetch(
-              `http://127.0.0.1:5002/location_details/${data.favorite_location}`
-            );
-            if (locationResponse.ok) {
-              const locationData = await locationResponse.json();
-              setFavoriteLocationName(locationData.name);
-              
-              // Get all locations to find the image
-              const locationsResponse = await fetch(
-                `http://127.0.0.1:5002/location_names`
-              );
-              if (locationsResponse.ok) {
-                const locationsData = await locationsResponse.json();
-                const location = locationsData.locations.find(
-                  (loc: any) => loc.id === data.favorite_location
-                );
-                if (location && location.image) {
-                  setMostVisitedLocationData({
-                    image: location.image,
-                    name: locationData.name,
-                    shortloc: location.shortloc
-                  });
-                }
-              }
-            }
-          } catch (error) {
-            console.error(`Error fetching favorite location:`, error);
-            setFavoriteLocationName(null);
-          }
-        } else {
-          setFavoriteLocationName(null);
-          setMostVisitedLocationData(null);
-        }
-      } catch (error) {
-        console.error("Error fetching user analytics:", error);
-        setUserAnalytics(null);
-      } finally {
-        setIsLoadingAnalytics(false);
-      }
-    };
-
-    fetchUserAnalytics();
-  }, [user?.id]);
+  // User analytics are now loaded via the useSessionDataPreload hook
 
   return (
     <>
@@ -211,84 +93,107 @@ export default function Index() {
       {/* Main grid layout */}
       <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 p-4 md:p-8 min-h-screen">
         {/* Left sidebar - Recommendations */}
-        <div className="md:col-span-3 flex flex-col">
-          <div className="flex flex-col bg-white/10 backdrop-blur-md border-2 border-white/10 rounded-3xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className={`text-xl md:text-2xl font-bold ${textColor}`}>
-                Recommendations
-              </h2>
+        <div className="md:col-span-3 flex flex-col h-full">
+          <div className="flex flex-col bg-white/10 backdrop-blur-md border-2 border-white/10 rounded-3xl p-5 h-full">
+            <div className="flex items-center justify-between mb-4 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <h2 className={`text-xl md:text-2xl font-bold ${textColor}`}>
+                  Recommendations
+                </h2>
+              </div>
               {user && (
                 <button
-                  onClick={handleReloadRecommendations}
-                  disabled={isPreloadingData}
+                  onClick={handleGenerateRecommendations}
+                  disabled={isGeneratingRecommendations}
                   className={`p-2 rounded-lg border border-white/30 ${textColor} transition-all hover:bg-white/10 hover:border-white/50 disabled:opacity-50 disabled:cursor-not-allowed`}
-                  title="Reload AI recommendations"
+                  title={hasGenerated ? "Refresh AI recommendations" : "Generate AI recommendations"}
                 >
-                  <RefreshCw className={`w-4 h-4 ${isPreloadingData ? 'animate-spin' : ''}`} />
+                  {hasGenerated ? (
+                    <RefreshCw className={`w-4 h-4 ${isGeneratingRecommendations ? 'animate-spin' : ''}`} />
+                  ) : (
+                    <Sparkles className={`w-4 h-4 ${isGeneratingRecommendations ? 'animate-pulse' : ''}`} />
+                  )}
                 </button>
               )}
             </div>
 
-            {isPreloadingData ? (
-              <div className={`text-sm ${textColor} opacity-80 text-center py-4`}>
-                Loading recommendations...
-              </div>
-            ) : (preloadedLocations.length > 0) ? (
-              <>
-                {/* Show either recommendation cards or mini map, not both */}
-                {!showLocationMap ? (
-                  <div className="flex flex-col gap-4 mb-4">
-                    {/* Use AI recommendations if available, otherwise fall back to first 3 locations */}
-                    {(preloadedLocations.slice(0, 3)).map((item) => {
-                      console.log(item);
-                      // Handle both recommendation objects and location objects
-                      const locationId = 'location_id' in item ? item.location_id : item.id;
-                      const spotName = 'location_name' in item ? item.location_name || 'Unknown Location' : item.name;
-                      const address = 'shortloc' in item ? item.shortloc || 'Unknown' : '';
-                      const description = 'reasoning' in item ? item.reasoning : (item.summary || "No description available");
-                      const imageUrl = 'image' in item ? item.image : '';
-                      console.log("imageUrl", imageUrl);
-                      return (
-                        <RecommendationCard
-                          locationId={locationId}
-                          spotName={spotName}
-                          address={address}
-                          description={description}
-                          textColor={textColor}
-                          imageUrl={imageUrl}
-                          isExpanded={expandedCardId === locationId}
-                          onExpand={handleCardExpand}
-                        />
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="mb-4 animate-in slide-in-from-top-4 duration-300">
-                    <LocationMiniMap 
-                      locations={preloadedLocations} 
-                      textColor={textColor} 
-                    />
-                  </div>
-                )}
-
-                {/* See All Locations Toggle Button */}
-                <button
-                  onClick={() => setShowLocationMap(!showLocationMap)}
-                  className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-white/20 ${textColor} font-semibold transition-all hover:bg-white/10 hover:border-white/50`}
-                >
-                  <span>{showLocationMap ? 'Show Recommendations' : 'See All Locations'}</span>
-                  {showLocationMap ? (
-                    <ChevronUp className="w-5 h-5" />
+            <div className="flex-1 overflow-y-auto">
+              {isGeneratingRecommendations ? (
+                <div className={`text-sm ${textColor} opacity-80 text-center py-4`}>
+                  Generating AI recommendations...
+                </div>
+              ) : recommendationsError ? (
+                <div className={`text-sm ${textColor} opacity-80 text-center py-4`}>
+                  Error: {recommendationsError}
+                </div>
+              ) : hasGenerated && recommendations.length > 0 ? (
+                <>
+                  {/* Show either recommendation cards or mini map, not both */}
+                  {!showLocationMap ? (
+                    <div className="flex flex-col gap-4 mb-4 pr-1">
+                      {/* Show AI recommendations */}
+                      {recommendations.slice(0, 3).map((item) => {
+                        console.log("Recommendation item:", item);
+                        // All recommendation items are now Location objects with reasoning in summary
+                        const locationId = item.id;
+                        const spotName = item.name;
+                        const address = item.shortloc || 'Unknown';
+                        const description = item.summary || "No description available";
+                        const imageUrl = item.image || '';
+                        console.log("imageUrl", imageUrl);
+                        return (
+                          <RecommendationCard
+                            locationId={locationId}
+                            spotName={spotName}
+                            address={address}
+                            description={description}
+                            textColor={textColor}
+                            imageUrl={imageUrl}
+                            isExpanded={expandedCardId === locationId}
+                            onExpand={handleCardExpand}
+                          />
+                        );
+                      })}
+                    </div>
                   ) : (
-                    <ChevronDown className="w-5 h-5" />
+                    <div className="mb-4 animate-in slide-in-from-top-4 duration-300 pr-1">
+                      <LocationMiniMap 
+                        locations={preloadedLocations} 
+                        textColor={textColor} 
+                      />
+                    </div>
                   )}
-                </button>
-              </>
-            ) : (
-              <div className={`text-sm ${textColor} opacity-80 text-center py-4`}>
-                No recommendations available
-              </div>
-            )}
+
+                  {/* See All Locations Toggle Button */}
+                  <div className="flex-shrink-0 pt-2">
+                    <button
+                      onClick={() => setShowLocationMap(!showLocationMap)}
+                      className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-white/20 ${textColor} font-semibold transition-all hover:bg-white/10 hover:border-white/50`}
+                    >
+                      <span>{showLocationMap ? 'Show Recommendations' : 'See All Locations'}</span>
+                      {showLocationMap ? (
+                        <ChevronUp className="w-5 h-5" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                  <div className={`text-sm ${textColor} opacity-80 mb-4`}>
+                    No recommendations yet
+                  </div>
+                  <div className={`text-xs ${textColor} opacity-60 mb-6`}>
+                    Press the button above to generate AI-powered study location recommendations
+                  </div>
+                  <div className={`flex items-center gap-2 text-xs ${textColor} opacity-50`}>
+                    <Sparkles className={`w-3 h-3 ${textColor}`} />
+                    <span>Powered by Claude</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -318,7 +223,7 @@ export default function Index() {
               </h1>
               <p className="text-white/80 text-sm md:text-base w-full">
                 {user ? (
-                  isLoadingAnalytics ? (
+                  isPreloadingData ? (
                     "Loading your study stats..."
                   ) : userAnalytics ? (
                     <>
@@ -416,7 +321,7 @@ export default function Index() {
                 <div className={`text-sm font-bold ${textColor} mb-2`}>
                   Most Productive Location
                 </div>
-                {isLoadingAnalytics ? (
+                {isPreloadingData ? (
                   <div className={`text-xs ${textColor} opacity-90`}>Loading...</div>
                 ) : userAnalytics?.most_productive_location?.location_id ? (
                   <div className={`text-xs ${textColor} opacity-90`}>
@@ -467,7 +372,7 @@ export default function Index() {
                 <div className={`text-sm font-bold ${textColor} mb-2`}>
                   Most Visited Location
                 </div>
-                {isLoadingAnalytics ? (
+                {isPreloadingData ? (
                   <div className={`text-xs ${textColor} opacity-90`}>Loading...</div>
                 ) : userAnalytics?.favorite_location && favoriteLocationName ? (
                   <div className={`text-xs ${textColor} opacity-90`}>
@@ -492,7 +397,7 @@ export default function Index() {
                 Your favorite collaborators were:
               </div>
               <div className="flex gap-2">
-                {isLoadingAnalytics ? (
+                {isPreloadingData ? (
                   <div className={`${textColor} opacity-80 text-sm`}>Loading...</div>
                 ) : studyBuddyData.length > 0 ? (
                   studyBuddyData.slice(0, 2).map((buddy, index) => (

@@ -66,7 +66,7 @@ class ApiClient {
   async getLocations(userId: string): Promise<Location[]> {
     // Endpoint: GET /location_names
     // Backend returns: { locations: [...] }
-    const response = await this.request<{ locations: Location[] }>(`/get_recommendation/${userId}`);
+    const response = await this.request<{ locations: Location[] }>(`/location_names/`);
     return response.locations;
   }
 
@@ -136,10 +136,12 @@ class ApiClient {
 
   // === Recommendation Endpoints ===
 
-  async getRecommendations(userId: string): Promise<RecommendationResponse> {
+  async getRecommendations(userId: string): Promise<Location[]> {
     // Endpoint: GET /get_recommendation/{user_id}
     // Returns AI-generated study location recommendations with reasoning
-    return this.request<RecommendationResponse>(`/get_recommendation/${userId}`);
+    // Backend returns: { locations: [...] }
+    const response = await this.request<{ locations: Location[] }>(`/get_recommendation/${userId}`);
+    return response.locations;
   }
 }
 

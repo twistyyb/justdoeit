@@ -26,9 +26,11 @@ export function useTimeBasedGradient(): GradientColors {
       );
       const hour = pacificTime.getHours();
       const minute = pacificTime.getMinutes();
-      const totalMinutes = hour * 60 + minute;
-
+      // const totalMinutes = hour * 60 + minute;
+      let totalMinutes = 240;
       let newGradient: GradientColors;
+
+      
 
       // Late Night (12am-4am) - Deep cosmic blues with purple
       if (totalMinutes >= 0 && totalMinutes < 240) {

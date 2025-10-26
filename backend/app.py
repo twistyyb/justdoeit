@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from supabase import Client
-from typing import List
+from typing import List, Dict, Optional
 from models import SessionCreate, SessionResponse, LocationCreate, LocationResponse, LocationSummary, LocationsListResponse, LocationDetailsResponse, CrowdednessBin, UserSummary, UsersListResponse, UserAnalyticsResponse, SessionTimeDuration, UserSessionsTimeResponse, SessionDetails, UserRecentSessionsResponse
 from pydantic import BaseModel
 import logging
@@ -12,13 +12,60 @@ from collections import Counter
 from startSupa import get_supabase
 from models import UserProfileCreate, UserProfileResponse, UserProfileGetResponse
 from claude import get_study_recommendation_with_full_context
+import json
+import re
 
 
 supabase = get_supabase()
 
+# Recommendation cache - stores recommendations with timestamps
+# Cache expires after 30 minutes to ensure recommendations stay fresh
+RECOMMENDATION_CACHE: Dict[str, Dict] = {}
+CACHE_EXPIRY_MINUTES = 30
+
+def is_cache_valid(cache_entry: Dict) -> bool:
+    """Check if a cache entry is still valid based on timestamp"""
+    if not cache_entry or 'timestamp' not in cache_entry:
+        return False
+    
+    cache_time = cache_entry['timestamp']
+    expiry_time = cache_time + timedelta(minutes=CACHE_EXPIRY_MINUTES)
+    return datetime.now(timezone.utc) < expiry_time
+
+def get_cached_recommendations(user_id: str) -> Optional[List[LocationSummary]]:
+    """Get cached recommendations for a user if they exist and are valid"""
+    if user_id not in RECOMMENDATION_CACHE:
+        return None
+    
+    cache_entry = RECOMMENDATION_CACHE[user_id]
+    if not is_cache_valid(cache_entry):
+        # Remove expired cache entry
+        del RECOMMENDATION_CACHE[user_id]
+        return None
+    
+    return cache_entry.get('recommendations')
+
+def cache_recommendations(user_id: str, recommendations: List[LocationSummary]) -> None:
+    """Cache recommendations for a user with current timestamp"""
+    RECOMMENDATION_CACHE[user_id] = {
+        'recommendations': recommendations,
+        'timestamp': datetime.now(timezone.utc)
+    }
+    logger.info(f"Cached recommendations for user {user_id}")
+
+def invalidate_user_cache(user_id: str) -> None:
+    """Invalidate cache for a specific user (useful when user data changes)"""
+    if user_id in RECOMMENDATION_CACHE:
+        del RECOMMENDATION_CACHE[user_id]
+        logger.info(f"Invalidated cache for user {user_id}")
+
+
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
 
 
 
@@ -61,6 +108,13 @@ async def respond(request: Request):
 async def create_session(session: SessionCreate): #data validated by pydantic model
     data = session.model_dump(mode='json') # Convert Pydantic model to dict with JSON-serializable values (datetime -> str)
     response = supabase.table("sessions").insert(data).execute()
+    
+    # Invalidate recommendation cache for all users who created this session
+    # since their study patterns have changed
+    if session.creators:
+        for creator_id in session.creators:
+            invalidate_user_cache(str(creator_id))
+    
     return {"message": "Session created", "data": response.data}
 
 
@@ -722,10 +776,10 @@ async def get_user_recent_sessions(user_id: UUID, limit: int = 10):
 @app.get("/user_sessions_aggregate/{user_id}")
 async def get_user_sessions_aggregate(user_id: UUID):
     """
-    Get comprehensive aggregation of all user session information in a single JSON response.
+    Get comprehensive aggregation of the 8 most recent user session information in a single JSON response.
     This includes:
-    - All session details with location names
-    - User analytics (favorite location, total study time, etc.)
+    - 8 most recent session details with location names
+    - User analytics calculated from recent sessions only (favorite location, total study time, etc.)
     - Session time/duration data
     - Summary statistics
     """
@@ -743,17 +797,19 @@ async def get_user_sessions_aggregate(user_id: UUID):
         logger.warning(f"Error checking user profile: {e}")
         user_profile = {"id": user_id_str, "name": "Unknown User"}
     
-    # Step 2: Get all user sessions (reuse logic from user_analytics)
+    # Step 2: Get user sessions (reuse logic from user_analytics) - limit to 8 most recent
     try:
         sessions_response = supabase.table("sessions")\
             .select("*")\
             .contains("creators", [user_id_str])\
+            .order("inputtime", desc=True)\
+            .limit(8)\
             .execute()
         user_sessions = sessions_response.data
-        logger.info(f"Found {len(user_sessions)} sessions for user {user_id_str}")
+        logger.info(f"Found {len(user_sessions)} most recent sessions for user {user_id_str}")
     except Exception as e:
         logger.warning(f"Array filter failed: {e}, falling back to Python filtering")
-        sessions_response = supabase.table("sessions").select("*").execute()
+        sessions_response = supabase.table("sessions").select("*").order("inputtime", desc=True).execute()
         user_sessions = []
         for session in sessions_response.data:
             creators = session.get('creators')
@@ -762,14 +818,12 @@ async def get_user_sessions_aggregate(user_id: UUID):
                 creators_str = [str(c) for c in creators_list]
                 if user_id_str in creators_str:
                     user_sessions.append(session)
-        logger.info(f"Found {len(user_sessions)} sessions for user {user_id_str} using Python filter")
+                    if len(user_sessions) >= 8:  # Limit to 8 most recent
+                        break
+        logger.info(f"Found {len(user_sessions)} most recent sessions for user {user_id_str} using Python filter")
     
-    # Step 3: Get user analytics
-    try:
-        analytics = await get_user_analytics(user_id)
-        analytics_data = analytics.model_dump()
-    except Exception as e:
-        logger.error(f"Error getting user analytics: {e}")
+    # Step 3: Calculate analytics based on the 8 most recent sessions only
+    if not user_sessions:
         analytics_data = {
             "favorite_location": None,
             "most_productive_location": None,
@@ -777,6 +831,129 @@ async def get_user_sessions_aggregate(user_id: UUID):
             "average_rating": 0.0,
             "streak": 0,
             "study_buddies": []
+        }
+    else:
+        # Calculate analytics from the limited session set
+        from collections import Counter
+        import pytz
+        
+        # Calculate favorite location (most frequent)
+        location_counts = Counter(s.get('locationid') for s in user_sessions if s.get('locationid'))
+        favorite_location_id = location_counts.most_common(1)[0][0] if location_counts else None
+        
+        # Get favorite location name
+        favorite_location = None
+        if favorite_location_id:
+            try:
+                loc_response = supabase.table("locations").select("name, shortloc").eq("id", favorite_location_id).execute()
+                if loc_response.data:
+                    favorite_location = {
+                        "location_id": favorite_location_id,
+                        "location_name": loc_response.data[0].get('name'),
+                        "shortloc": loc_response.data[0].get('shortloc'),
+                        "session_count": location_counts[favorite_location_id]
+                    }
+            except Exception as e:
+                logger.warning(f"Error fetching favorite location details: {e}")
+        
+        # Calculate most productive location (highest average rating)
+        location_ratings = {}
+        for session in user_sessions:
+            location_id = session.get('locationid')
+            rating = session.get('rating')
+            if location_id and rating is not None:
+                if location_id not in location_ratings:
+                    location_ratings[location_id] = []
+                location_ratings[location_id].append(rating)
+        
+        most_productive_location_id = None
+        most_productive_avg_rating = 0
+        if location_ratings:
+            for location_id, ratings in location_ratings.items():
+                avg_rating = sum(ratings) / len(ratings)
+                if avg_rating > most_productive_avg_rating:
+                    most_productive_avg_rating = avg_rating
+                    most_productive_location_id = location_id
+        
+        # Get most productive location name
+        most_productive_location = None
+        if most_productive_location_id:
+            try:
+                loc_response = supabase.table("locations").select("name, shortloc").eq("id", most_productive_location_id).execute()
+                if loc_response.data:
+                    most_productive_location = {
+                        "location_id": most_productive_location_id,
+                        "location_name": loc_response.data[0].get('name'),
+                        "shortloc": loc_response.data[0].get('shortloc'),
+                        "average_rating": round(most_productive_avg_rating, 2)
+                    }
+            except Exception as e:
+                logger.warning(f"Error fetching most productive location details: {e}")
+        
+        # Calculate total study time
+        total_study_time = sum(s.get('duration', 0) or 0 for s in user_sessions)
+        
+        # Calculate average rating
+        ratings = [s.get('rating') for s in user_sessions if s.get('rating') is not None]
+        average_rating = sum(ratings) / len(ratings) if ratings else 0.0
+        
+        # Calculate streak (simplified for recent sessions)
+        pacific_tz = pytz.timezone('America/Los_Angeles')
+        unique_dates = set()
+        for session in user_sessions:
+            if session.get('inputtime'):
+                try:
+                    inputtime = datetime.fromisoformat(session['inputtime'].replace('Z', '+00:00'))
+                    pacific_time = inputtime.astimezone(pacific_tz)
+                    unique_dates.add(pacific_time.date())
+                except Exception as e:
+                    logger.warning(f"Error parsing inputtime for streak: {e}")
+        
+        # For recent sessions, calculate a simple streak
+        sorted_dates = sorted(unique_dates, reverse=True)
+        streak = 0
+        if sorted_dates:
+            current_date = datetime.now(pacific_tz).date()
+            for i, date in enumerate(sorted_dates):
+                if i == 0:
+                    # Check if most recent session was today or yesterday
+                    if date == current_date or date == current_date - timedelta(days=1):
+                        streak = 1
+                    else:
+                        break
+                else:
+                    # Check if dates are consecutive
+                    if date == sorted_dates[i-1] - timedelta(days=1):
+                        streak += 1
+                    else:
+                        break
+        
+        # Calculate study buddies from recent sessions
+        all_buddies = []
+        for session in user_sessions:
+            creators = session.get('creators', [])
+            if creators:
+                creators_list = list(creators) if not isinstance(creators, list) else creators
+                creators_str = [str(c) for c in creators_list]
+                # Add all other creators as study buddies (excluding the user themselves)
+                for creator in creators_str:
+                    if creator != user_id_str:
+                        all_buddies.append(creator)
+        
+        # Count occurrences and get top 3 with counts
+        buddy_counts = Counter(all_buddies)
+        study_buddies = [
+            {"user_id": buddy_id, "session_count": count} 
+            for buddy_id, count in buddy_counts.most_common(3)
+        ]
+        
+        analytics_data = {
+            "favorite_location": favorite_location,
+            "most_productive_location": most_productive_location,
+            "total_study_time": total_study_time,
+            "average_rating": round(average_rating, 2),
+            "streak": streak,
+            "study_buddies": study_buddies
         }
     
     # Step 4: Get session time/duration data
@@ -879,13 +1056,19 @@ async def location_names():
 @app.get("/get_recommendation/{user_id}")
 async def get_recommendation(user_id: UUID):
     try:
+        user_id_str = str(user_id)
+        
+        # Check cache first
+        cached_recommendations = get_cached_recommendations(user_id_str)
+        if cached_recommendations is not None:
+            logger.info(f"Returning cached recommendations for user {user_id}")
+            return LocationsListResponse(locations=cached_recommendations)
+        
+        # Generate new recommendations if not in cache
+        logger.info(f"Generating new recommendations for user {user_id}")
         location_info = await get_all_location_info()
         sessions_info = await get_user_sessions_aggregate(user_id)
         recommendation_text = get_study_recommendation_with_full_context(location_info, sessions_info)
-        
-        # Parse the JSON response from Claude
-        import json
-        import re
         
         # Extract JSON from the response (in case there's extra text)
         json_match = re.search(r'```json\s*(\{.*?\})\s*```', recommendation_text, re.DOTALL)
@@ -906,23 +1089,27 @@ async def get_recommendation(user_id: UUID):
         recLocations = []
         for rec in recommendation_data.get("recommendations", []):
             location_id = rec.get("location_id")
-            summary = rec.get("reasoning")
+            reasoning = rec.get("reasoning")
             if location_id in location_info:
                 location_data = location_info[location_id]
-                name =location_data.get("name", "Unknown Location")
-                shortLoc= location_data.get("shortloc", "Unknown")
+                name = location_data.get("name", "Unknown Location")
+                shortLoc = location_data.get("shortloc", "Unknown")
                 image = location_data.get("image", "Unknown")
                 x = location_data.get("coordinate_x", 0.0)
                 y = location_data.get("coordinate_y", 0.0)
+                # Use reasoning as the summary for recommendations
                 recLocations.append(
                     LocationSummary(
-                        id=location_id, name=name, shortloc=shortLoc, summary=summary, image=image, coordinate_x=x, coordinate_y=y
+                        id=location_id, name=name, shortloc=shortLoc, summary=reasoning, image=image, coordinate_x=x, coordinate_y=y
                     )
                 )
             else:
                 # Fallback if location not found
                 rec["location_name"] = "Unknown Location"
                 rec["shortloc"] = "Unknown"
+        
+        # Cache the recommendations
+        cache_recommendations(user_id_str, recLocations)
         
         return LocationsListResponse(locations=recLocations)
         
@@ -932,6 +1119,7 @@ async def get_recommendation(user_id: UUID):
     except Exception as e:
         logger.error(f"Error generating recommendation for user {user_id}: {e}")
         return LocationsListResponse(locations=[])
+
 
 
 if __name__ == "__main__":
