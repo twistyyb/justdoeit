@@ -7,6 +7,7 @@ from pydantic import BaseModel
 import logging
 from uuid import UUID
 from datetime import datetime, timezone, timedelta
+import pytz
 from collections import Counter
 from startSupa import get_supabase
 from models import UserProfileCreate, UserProfileResponse, UserProfileGetResponse
@@ -324,7 +325,8 @@ async def get_user_analytics(user_id: UUID):
     average_rating = sum(ratings) / len(ratings) if ratings else 0.0
     
     # Step 5: Calculate streak
-    # Extract unique dates from sessions (UTC)
+    # Extract unique dates from sessions (converted to Pacific time)
+    pacific_tz = pytz.timezone('America/Los_Angeles')
     unique_dates = set()
     for session in user_sessions:
         if session.get('inputtime'):
@@ -333,12 +335,12 @@ async def get_user_analytics(user_id: UUID):
                     input_time = datetime.fromisoformat(session['inputtime'].replace('Z', '+00:00'))
                 else:
                     input_time = session['inputtime']
-                # Ensure timezone-aware and convert to UTC
+                # Ensure timezone-aware and convert to Pacific time
                 if input_time.tzinfo is None:
                     input_time = input_time.replace(tzinfo=timezone.utc)
-                else:
-                    input_time = input_time.astimezone(timezone.utc)
-                unique_dates.add(input_time.date())
+                # Convert to Pacific timezone
+                input_time_pacific = input_time.astimezone(pacific_tz)
+                unique_dates.add(input_time_pacific.date())
             except Exception as e:
                 logger.error(f"Error parsing date for streak: {e}")
                 continue
@@ -349,13 +351,14 @@ async def get_user_analytics(user_id: UUID):
         # Sort dates descending
         sorted_dates = sorted(unique_dates, reverse=True)
         most_recent_date = sorted_dates[0]
-        today_utc = datetime.now(timezone.utc).date()
-        yesterday_utc = today_utc - timedelta(days=1)
+        # Get today and yesterday in Pacific time
+        today_pacific = datetime.now(pacific_tz).date()
+        yesterday_pacific = today_pacific - timedelta(days=1)
         
-        # Calculate streak (all in UTC)
-        if most_recent_date == today_utc:
+        # Calculate streak (all in Pacific time)
+        if most_recent_date == today_pacific:
             # Most recent is today - count backwards from today
-            current_date = today_utc
+            current_date = today_pacific
             streak = 0
             for date in sorted_dates:
                 if date == current_date:
@@ -363,7 +366,7 @@ async def get_user_analytics(user_id: UUID):
                     current_date -= timedelta(days=1)
                 else:
                     break
-        elif most_recent_date == yesterday_utc:
+        elif most_recent_date == yesterday_pacific:
             # Most recent is yesterday - count backwards from yesterday
             current_date = most_recent_date
             streak = 0
@@ -379,7 +382,7 @@ async def get_user_analytics(user_id: UUID):
             # Most recent is 2+ days ago - streak broken
             streak = 0
         
-        logger.info(f"Streak calculation: most_recent={most_recent_date}, today={today_utc}, streak={streak}, sorted_dates={sorted_dates}")
+        logger.info(f"Streak calculation (Pacific): most_recent={most_recent_date}, today={today_pacific}, streak={streak}, sorted_dates={sorted_dates}")
     
     # Step 6: Calculate study buddies (top 3)
     all_buddies = []
