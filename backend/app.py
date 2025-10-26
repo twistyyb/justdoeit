@@ -50,16 +50,16 @@ async def respond(request: Request):
 
 @app.post("/create_session")
 async def create_session(session: SessionCreate): #data validated by pydantic model
-    data = session.model_dump() # Convert Pydantic model to Python dict to insert into Supabase table as a row
+    data = session.model_dump(mode='json') # Convert Pydantic model to dict with JSON-serializable values (datetime -> str)
     response = supabase.table("sessions").insert(data).execute()
-    return response[0]
+    return {"message": "Session created", "data": response.data}
 
 
 @app.post("/create_location")
 async def create_location(location: LocationCreate):
-    data = location.model_dump()
+    data = location.model_dump(mode='json')
     response = supabase.table("locations").insert(data).execute()
-    return response[0]
+    return {"message": "Location created", "data": response.data}
 
 
 @app.get("/location_names", response_model=LocationsListResponse)
