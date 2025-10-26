@@ -11,6 +11,7 @@ interface RecommendationCardProps {
   imageUrl?: string;
   isExpanded?: boolean;
   onExpand?: (locationId: string) => void;
+  preloadedDetails?: LocationDetailsResponse | null;
 }
 
 interface BusynessHistogramProps {
@@ -111,11 +112,19 @@ export function RecommendationCard({
   imageUrl,
   isExpanded = false,
   onExpand,
+  preloadedDetails,
 }: RecommendationCardProps) {
-  const [locationDetails, setLocationDetails] = useState<LocationDetailsResponse | null>(null);
+  const [locationDetails, setLocationDetails] = useState<LocationDetailsResponse | null>(preloadedDetails || null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showExpandedContent, setShowExpandedContent] = useState(false);
+
+  // Update locationDetails when preloadedDetails changes
+  useEffect(() => {
+    if (preloadedDetails) {
+      setLocationDetails(preloadedDetails);
+    }
+  }, [preloadedDetails]);
 
   // Handle showExpandedContent when isExpanded changes
   useEffect(() => {
@@ -162,10 +171,15 @@ export function RecommendationCard({
       return;
     }
 
-    // Always refresh data when opening the card
-    console.log('🔄 Refreshing location data for:', locationId);
-    await fetchLocationDetails();
-    onExpand?.(locationId);
+    // Use preloaded data if available, otherwise fetch
+    if (locationDetails) {
+      console.log('✅ Using preloaded data for:', locationId);
+      onExpand?.(locationId);
+    } else {
+      console.log('🔄 Fetching location data for:', locationId);
+      await fetchLocationDetails();
+      onExpand?.(locationId);
+    }
   };
 
   return (

@@ -84,7 +84,7 @@ dist-ssr
 *.sw?
 
 .config/
-!.env
+.env
 
 backend/.env
 frontend/.env

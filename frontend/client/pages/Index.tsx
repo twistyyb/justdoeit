@@ -48,7 +48,8 @@ export default function Index() {
     hasGenerated,
     generateRecommendations,
     refreshRecommendations,
-    hasValidCache
+    hasValidCache,
+    preloadedDetails
   } = useRecommendations(user?.id);
 
   const handleCardExpand = (locationId: string) => {
@@ -140,9 +141,11 @@ export default function Index() {
                         const address = item.shortloc || 'Unknown';
                         const description = item.summary || "No description available";
                         const imageUrl = item.image || '';
+                        const preloadedData = preloadedDetails.get(locationId);
                         console.log("imageUrl", imageUrl);
                         return (
                           <RecommendationCard
+                            key={locationId}
                             locationId={locationId}
                             spotName={spotName}
                             address={address}
@@ -151,6 +154,7 @@ export default function Index() {
                             imageUrl={imageUrl}
                             isExpanded={expandedCardId === locationId}
                             onExpand={handleCardExpand}
+                            preloadedDetails={preloadedData}
                           />
                         );
                       })}

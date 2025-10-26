@@ -1,13 +1,14 @@
 import { useState, useCallback } from "react";
 import { apiClient } from "@/lib/api";
 import { RecommendationCache } from "@/lib/recommendationCache";
-import type { Location } from "../../shared/api";
+import type { Location, LocationDetailsResponse } from "../../shared/api";
 
 interface RecommendationsState {
   recommendations: Location[];
   isLoading: boolean;
   error: string | null;
   hasGenerated: boolean;
+  preloadedDetails: Map<string, LocationDetailsResponse>;
 }
 
 /**
@@ -20,7 +21,42 @@ export function useRecommendations(userId?: string) {
     isLoading: false,
     error: null,
     hasGenerated: false,
+    preloadedDetails: new Map(),
   });
+
+  // Preload location details for all recommendations
+  const preloadLocationDetails = useCallback(async (recs: Location[]) => {
+    console.log("🔄 Preloading location details for", recs.length, "recommendations");
+    
+    try {
+      // Fetch all location details in parallel
+      const detailsPromises = recs.map(async (rec) => {
+        try {
+          const details = await apiClient.getLocationDetails(rec.id);
+          return { locationId: rec.id, details };
+        } catch (err) {
+          console.error(`Failed to preload details for ${rec.id}:`, err);
+          return null;
+        }
+      });
+
+      const results = await Promise.all(detailsPromises);
+      
+      // Update state with preloaded details
+      setState(prev => {
+        const newMap = new Map(prev.preloadedDetails);
+        results.forEach(result => {
+          if (result) {
+            newMap.set(result.locationId, result.details);
+          }
+        });
+        console.log("✅ Preloaded", newMap.size, "location details");
+        return { ...prev, preloadedDetails: newMap };
+      });
+    } catch (error) {
+      console.error("❌ Error preloading location details:", error);
+    }
+  }, []);
 
   const generateRecommendations = useCallback(async () => {
     if (!userId) {
@@ -42,7 +78,10 @@ export function useRecommendations(userId?: string) {
           isLoading: false,
           error: null,
           hasGenerated: true,
+          preloadedDetails: new Map(),
         });
+        // Preload details for cached recommendations
+        preloadLocationDetails(cachedRecs);
         return;
       }
 
@@ -58,7 +97,11 @@ export function useRecommendations(userId?: string) {
         isLoading: false,
         error: null,
         hasGenerated: true,
+        preloadedDetails: new Map(),
       });
+      
+      // Preload location details for all recommendations
+      preloadLocationDetails(freshRecs);
       
       console.log("✅ Recommendations generated successfully");
     } catch (error) {
@@ -69,7 +112,7 @@ export function useRecommendations(userId?: string) {
         error: "Failed to generate recommendations",
       }));
     }
-  }, [userId]);
+  }, [userId, preloadLocationDetails]);
 
   const refreshRecommendations = useCallback(async () => {
     if (!userId) {
@@ -95,7 +138,11 @@ export function useRecommendations(userId?: string) {
         isLoading: false,
         error: null,
         hasGenerated: true,
+        preloadedDetails: new Map(),
       });
+      
+      // Preload location details for all recommendations
+      preloadLocationDetails(freshRecs);
       
       console.log("✅ Recommendations refreshed successfully");
     } catch (error) {
@@ -106,7 +153,7 @@ export function useRecommendations(userId?: string) {
         error: "Failed to refresh recommendations",
       }));
     }
-  }, [userId]);
+  }, [userId, preloadLocationDetails]);
 
   const clearRecommendations = useCallback(() => {
     if (userId) {
@@ -117,6 +164,7 @@ export function useRecommendations(userId?: string) {
       isLoading: false,
       error: null,
       hasGenerated: false,
+      preloadedDetails: new Map(),
     });
   }, [userId]);
 
