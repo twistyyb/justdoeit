@@ -116,3 +116,21 @@ class SessionTimeDuration(BaseModel):
 class UserSessionsTimeResponse(BaseModel):
     """Model for user sessions time/duration endpoint response"""
     sessions: List[SessionTimeDuration]
+
+class SessionDetails(BaseModel):
+    """Model for detailed session data with location info"""
+    id: str
+    locationid: str
+    location_name: str
+    inputtime: Optional[datetime] = None
+    duration: Optional[int] = None
+    rating: float
+    cleanliness: int
+    comment: Optional[str] = None
+    outletavailability: Optional[bool] = None
+    creators: Optional[List[str]] = None
+    crowdedness: Optional[int] = None
+
+class UserRecentSessionsResponse(BaseModel):
+    """Model for user recent sessions endpoint response"""
+    sessions: List[SessionDetails]

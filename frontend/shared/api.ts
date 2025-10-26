@@ -108,6 +108,35 @@ export interface PaginatedResponse<T> {
   pageSize: number;
 }
 
+// === Study Analytics Types ===
+
+export interface SessionTimeDuration {
+  inputtime: string | null;
+  duration: number | null; // in minutes
+}
+
+export interface UserSessionsTimeResponse {
+  sessions: SessionTimeDuration[];
+}
+
+export interface SessionDetails {
+  id: string;
+  locationid: string;
+  location_name: string;
+  inputtime: string | null;
+  duration: number | null;
+  rating: number;
+  cleanliness: number;
+  comment: string | null;
+  outletavailability: boolean | null;
+  creators: string[] | null;
+  crowdedness: number | null;
+}
+
+export interface UserRecentSessionsResponse {
+  sessions: SessionDetails[];
+}
+
 // === API Utility Types ===
 
 export type ApiEndpoint = 
@@ -117,4 +146,5 @@ export type ApiEndpoint =
   | "GET /users"
   | "GET /sessions"
   | "POST /create_session"
-  | "GET /sessions/:id";
+  | "GET /sessions/:id"
+  | "GET /user_sessions_time/:user_id";

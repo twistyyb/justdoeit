@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { LogSessionModal } from "@/components/LogSessionModal";
 import { RecentSessionsModal } from "@/components/RecentSessionsModal";
 import { RecommendationCard } from "@/components/RecommendationCard";
-import { AnalyticsCard } from "@/components/AnalyticsCard";
+import { StudyContributionGraph } from "@/components/StudyContributionGraph";
 import { AuthModal } from "@/components/AuthModal";
 import { UserProfile } from "@/components/UserProfile";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
@@ -137,12 +137,7 @@ export default function Index() {
               Personal Analytics
             </h2>
 
-            <AnalyticsCard
-              title="Github graph of study time density"
-              subtitle="(Placeholder - would show actual chart)"
-              content="📊 Study intensity visualization"
-              textColor={textColor}
-            />
+            <StudyContributionGraph textColor={textColor} />
 
             <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-2xl p-4 mb-4">
               <div className={`text-sm font-bold ${textColor} mb-2`}>
