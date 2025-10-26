@@ -71,3 +71,20 @@ class LocationDetailsResponse(BaseModel):
     average_rating: float
     average_cleanliness: float
     crowdedness_vs_time: Dict[str, CrowdednessBin]
+
+
+
+# Pydantic models for user profile
+class UserProfileCreate(BaseModel):
+    user_id: str
+    name: str
+
+class UserProfileResponse(BaseModel):
+    message: str
+    data: dict
+
+class UserProfileGetResponse(BaseModel):
+    id: str
+    name: str
+    created_at: str
+    updated_at: str

@@ -7,6 +7,7 @@ from pydantic import BaseModel
 import logging
 from uuid import UUID
 from startSupa import get_supabase
+from models import UserProfileCreate, UserProfileResponse, UserProfileGetResponse
 
 
 supabase = get_supabase()
@@ -15,20 +16,7 @@ supabase = get_supabase()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Pydantic models for user profile
-class UserProfileCreate(BaseModel):
-    user_id: str
-    name: str
 
-class UserProfileResponse(BaseModel):
-    message: str
-    data: dict
-
-class UserProfileGetResponse(BaseModel):
-    id: str
-    name: str
-    created_at: str
-    updated_at: str
 
 app = FastAPI(title="Just Doe It API", version="1.0.0")
 
